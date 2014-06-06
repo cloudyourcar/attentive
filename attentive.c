@@ -150,7 +150,9 @@ static const char *_at_command(struct at *at, const void *data, size_t size)
     fwrite(data, size, 1, at->stream);
 
     // wait for the parser thread to collect a response
-    sem_wait(&at->response_sem);
+    printf("waiting for semaphore\n");
+    printf("got semaphore: %d\n", sem_wait(&at->response_sem));
+    printf("errno: %s\n", strerror(errno));
 
     // FIXME: return NULL on errors / timeout
     return at->response;

@@ -22,6 +22,7 @@ clean:
 	$(RM) tests *.o
 
 tests: tests.o attentive.o
+example: example.o attentive.o
 tests.o: tests.c attentive.h
 attentive.o: attentive.c attentive.h
 
