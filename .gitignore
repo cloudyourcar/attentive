@@ -1,0 +1,7 @@
+*.o
+*~
+*.diff
+.*.swp
+tests
+example
+html/
