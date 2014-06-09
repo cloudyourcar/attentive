@@ -63,7 +63,7 @@ typedef void (*urc_callback_t)(const char *line, size_t len);
  * @param urc_callback Modem-specific URC callback.
  * @returns Instance pointer on success, NULL on failure.
  */
-struct at *at_open(FILE *stream, response_parser_t modem_parser, urc_callback_t urc_callback);
+struct at *at_open(FILE *istream, FILE *ostream, response_parser_t modem_parser, urc_callback_t urc_callback);
 
 /**
  * Close and free an AT channel instance.

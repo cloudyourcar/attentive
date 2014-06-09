@@ -11,7 +11,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <pthread.h>
-#include <semaphore.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,13 +45,16 @@ static const char *urc_responses[] = {
  */
 struct at
 {
-    FILE *stream;                       /**< Modem device file stream. */
+    FILE *istream;                      /**< Modem device read stream. */
+    FILE *ostream;                      /**< Modem device write stream. */
     pthread_t thread;                   /**< Response reader thread. */
 
     bool in_command : 1;                /**< A command is currently executing. */
     bool expect_dataprompt : 1;         /**< Expect "> " prompt for the next command. */
     int timeout;                        /**< Current command timeout, in seconds. */
-    sem_t response_sem;                 /**< "Response arrived" semaphore. */
+
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
 
     urc_callback_t urc_callback;        /**< Modem-specific URC callback. */
     response_parser_t modem_parser;     /**< Modem-specific response parser. */
@@ -83,7 +85,7 @@ static inline int at_response_data_length(enum at_response_type response)
 
 static void *at_reader_thread(void *pdata);
 
-struct at *at_open(FILE *stream, response_parser_t modem_parser, urc_callback_t urc_callback)
+struct at *at_open(FILE *istream, FILE *ostream, response_parser_t modem_parser, urc_callback_t urc_callback)
 {
     /* allocate instance */
     struct at *at = (struct at *) malloc(sizeof(struct at));
@@ -101,12 +103,14 @@ struct at *at_open(FILE *stream, response_parser_t modem_parser, urc_callback_t 
     }
 
     /* fill instance */
-    sem_init(&at->response_sem, 0, 0);
-    at->stream = stream;
+    at->istream = istream;
+    at->ostream = ostream;
     at->urc_callback = urc_callback;
     at->modem_parser = modem_parser;
 
     /* start reader thread */
+    pthread_mutex_init(&at->mutex, NULL);
+    pthread_cond_init(&at->cond, NULL);
     pthread_create(&at->thread, NULL, at_reader_thread, (void *) at);
 
     return at;
@@ -115,11 +119,13 @@ struct at *at_open(FILE *stream, response_parser_t modem_parser, urc_callback_t 
 void at_close(struct at *at)
 {
     /* terminate reader thread */
-    pthread_kill(at->thread, SIGUSR1);
+    pthread_kill(at->thread, SIGTERM);
     pthread_join(at->thread, NULL);
+    pthread_cond_destroy(&at->cond);
+    pthread_mutex_destroy(&at->mutex);
 
     /* free up resources */
-    sem_destroy(&at->response_sem);
+    free(at->response);
     free(at);
 }
 
@@ -146,13 +152,14 @@ static const char *_at_command(struct at *at, const void *data, size_t size)
     at->response_length = 0;
     at->in_command = true;
 
-    // FIXME: handle errors
-    fwrite(data, size, 1, at->stream);
+    fwrite(data, 1, size, at->ostream);
+    fflush(at->ostream);
 
     // wait for the parser thread to collect a response
-    printf("waiting for semaphore\n");
-    printf("got semaphore: %d\n", sem_wait(&at->response_sem));
-    printf("errno: %s\n", strerror(errno));
+    pthread_mutex_lock(&at->mutex);
+    while (at->in_command)
+        pthread_cond_wait(&at->cond, &at->mutex);
+    pthread_mutex_unlock(&at->mutex);
 
     // FIXME: return NULL on errors / timeout
     return at->response;
@@ -160,7 +167,7 @@ static const char *_at_command(struct at *at, const void *data, size_t size)
 
 const char *at_command_raw(struct at *at, const void *data, size_t size)
 {
-    printf("> [raw payload, length: %zu bytes]\r\n", size);
+    printf("> [raw payload, length: %zu bytes]\n", size);
 
     return _at_command(at, data, size);
 }
@@ -176,7 +183,7 @@ const char *at_command(struct at *at, const char *format, ...)
     va_end(ap);
 
     /* Append modem-style newline. */
-    printf("> %s\r\n", line);
+    printf("> %s\n", line);
     memcpy(line+len, "\r\n", 2);
     len += 2;
 
@@ -231,11 +238,11 @@ static void *at_reader_thread(void *arg)
     int len;
     char line[AT_RESPONSE_LENGTH];
 
-    printf("at_reader_task: starting\r\n");
+    printf("at_reader_task: starting\n");
     while (1) {
         if (at->expect_dataprompt) {
             /* Most modules respond with "\r\n> " when waiting for raw data. */
-            len = fread(line, 1, 2, at->stream);
+            len = fread(line, 1, 2, at->istream);
             if (len != 2)
                 break;
 
@@ -245,7 +252,7 @@ static void *at_reader_thread(void *arg)
 
             if (memcmp(line, "> ", 2)) {
                 /* Oops, this is not the dataprompt. Pretend the fread didn't happen. */
-                if (fgets(line+2, sizeof(line)-2, at->stream) == NULL)
+                if (fgets(line+2, sizeof(line)-2, at->istream) == NULL)
                     break;
             } else {
                 /* Data prompt arrived. Zero-terminate and fall through. */
@@ -253,7 +260,7 @@ static void *at_reader_thread(void *arg)
             }
         } else {
             /* Normal operation: read a line. */
-            if (fgets(line, sizeof(line), at->stream) == NULL)
+            if (fgets(line, sizeof(line), at->istream) == NULL)
                 break;
         }
 
@@ -269,7 +276,7 @@ static void *at_reader_thread(void *arg)
         if (!len)
             continue;
 
-        printf("< '%s'\r\n", line);
+        printf("< '%s'\n", line);
 
         enum at_response_type response_type = at_get_response_type(at, line, len);
 
@@ -301,16 +308,18 @@ static void *at_reader_thread(void *arg)
             }
 
             if (response_type == AT_RESPONSE_FINAL_OK || response_type == AT_RESPONSE_FINAL) {
-                /* Final line arrived; clean up parser state. */
-                at->in_command = false;
-                at->expect_dataprompt = false;
-                at->command_parser = NULL;
-
                 /* Zero-terminate the result. */
                 at->response[at->response_length] = '\0';
 
+                /* Final line arrived; clean up parser state. */
+                at->expect_dataprompt = false;
+                at->command_parser = NULL;
+
                 /* Signal the waiting at_command(). */
-                sem_post(&at->response_sem);
+                pthread_mutex_lock(&at->mutex);
+                at->in_command = false;
+                pthread_mutex_unlock(&at->mutex);
+                pthread_cond_signal(&at->cond);
 
             } else if (at_response_is_rawdata(response_type)) {
                 /* Fixed size raw data follows. Read it and carry on reading further lines. */
@@ -329,18 +338,18 @@ static void *at_reader_thread(void *arg)
                     at->response[at->response_length++] = '\n';
 
                 /* Read a block of data and append it. */
-                len = fread(at->response + at->response_length, 1, amount, at->stream);
+                len = fread(at->response + at->response_length, 1, amount, at->istream);
                 if (len != amount)
                     break;
                 at->response_length += len;
             }
 
         } else {
-            printf("!!! unexpected line from modem: %s\n", line);
+            printf("at_reader_task: unexpected line from modem: %s\n", line);
         }
     }
 
-    printf("at_reader_task: finished\r\n");
+    printf("at_reader_task: finished\n");
 
     pthread_exit(NULL);
     return NULL;

@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "attentive.h"
 
@@ -35,26 +36,36 @@ int main(int argc, char *argv[])
     assert(argc == 2);
     const char *port = argv[1];
 
+    sleep(1);
+
     /* open serial port */
     printf("opening port...\n");
-    FILE *stream = fopen(port, "r+");
+    int fd = open(port, O_RDWR);
     struct termios attr;
-    tcgetattr(fileno(stream), &attr);
+    tcgetattr(fd, &attr);
     cfsetspeed(&attr, B115200);
-    tcsetattr(fileno(stream), TCSANOW, &attr);
+    tcsetattr(fd, TCSANOW, &attr);
+
+    FILE *istream = fdopen(fd, "rb");
+    FILE *ostream = fdopen(fd, "wb");
+    setvbuf(istream, NULL, _IONBF, 0);
+    setvbuf(ostream, NULL, _IONBF, 0);
 
     /* create AT channel instance */
     printf("starting parser...\n");
-    struct at *at = at_open(stream, response_parser, urc_callback);
+    struct at *at = at_open(istream, ostream, response_parser, urc_callback);
 
-    printf("sending command...\n");
-    const char *response = at_command(at, "ATE0");
-    printf("response: %s\n", response);
+    printf("sending commands...\n");
+    at_command(at, "AT+BLAH");
+    at_command(at, "AT+CGSN");
+    at_command(at, "AT+CCID");
+    at_command(at, "AT+CGN");
+    at_command(at, "AT+CCID");
 
-    printf("waiting a few seconds...\n");
-    sleep(3);
-
+    printf("closing port...\n");
     at_close(at);
+
+    printf("finished\n");
 
     return 0;
 }
