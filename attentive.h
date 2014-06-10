@@ -49,22 +49,28 @@ enum at_response_type {
 #define AT_RESPONSE_HEXDATA_FOLLOWS(amount) \
     (_AT_RESPONSE_HEXDATA_FOLLOWS | ((amount) << 8))
 
+struct at_port {
+    const struct at_port_operations *ops;
+};
+
 struct at_device {
-    const struct at_device_ops *ops;
+    const struct at_device_operations *ops;
 };
 
 typedef enum at_response_type (*at_response_parser_t)(struct at_device *dev, const void *line, size_t len);
 
-struct at_device_ops {
+struct at_port_operations {
     /** Open the device. Should enable device power, open the serial port, etc. */
-    int (*open)(struct at_device *dev);
+    int (*open)(struct at_port *dev);
     /** Read bytes. See read(2). */
-    ssize_t (*read)(struct at_device *dev, void *buf, size_t len);
+    ssize_t (*read)(struct at_port *dev, void *buf, size_t len);
     /** Write bytes. See write(2). */
-    ssize_t (*write)(struct at_device *dev, const void *buf, size_t len);
+    ssize_t (*write)(struct at_port *dev, const void *buf, size_t len);
     /** Close the device. Should disable power, close serial port, etc. */
-    int (*close)(struct at_device *dev);
+    int (*close)(struct at_port *dev);
+};
 
+struct at_device_operations {
     /** Parse response line and determine its type. */
     enum at_response_type (*parse_response)(struct at_device *dev, const void *line, size_t len);
     /** Handle incoming URC response. */
@@ -77,7 +83,7 @@ struct at_device_ops {
  * @param dev AT modem device.
  * @returns Instance pointer on success, NULL and sets errno on failure.
  */
-struct at *at_alloc(struct at_device *dev);
+struct at *at_alloc(struct at_port *port, struct at_device *dev);
 
 /**
  * Open the AT channel.

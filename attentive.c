@@ -52,6 +52,7 @@ struct at
 {
     /* The following variables are read-only after at_init(). */
 
+    struct at_port *port;               /**< Modem port. */
     struct at_device *dev;              /**< Modem device. */
 
     pthread_t thread;                   /**< Response reader thread. */
@@ -93,7 +94,7 @@ static inline int at_response_data_length(enum at_response_type response)
 
 static void *at_reader(void *pdata);
 
-struct at *at_alloc(struct at_device *dev)
+struct at *at_alloc(struct at_port *port, struct at_device *dev)
 {
     /* allocate instance */
     struct at *at = (struct at *) malloc(sizeof(struct at));
@@ -111,6 +112,7 @@ struct at *at_alloc(struct at_device *dev)
     }
 
     /* fill instance */
+    at->port = port;
     at->dev = dev;
 
     /* initialize and start reader thread */
@@ -126,7 +128,7 @@ int at_open(struct at *at)
     pthread_mutex_lock(&at->mutex);
 
     printf("at_open: opening device\n");
-    int result = at->dev->ops->open(at->dev);
+    int result = at->port->ops->open(at->port);
     if (result == 0) {
         printf("at_open: success\n");
         at->open = true;
@@ -160,7 +162,7 @@ int at_close(struct at *at)
 
     /* Close the device. */
     printf("at_close: closing device\n");
-    int result = at->dev->ops->open(at->dev);
+    int result = at->port->ops->open(at->port);
     if (result == 0) {
         printf("at_close: success\n");
         pthread_cond_signal(&at->cond);
@@ -233,7 +235,7 @@ static const char *_at_command(struct at *at, const void *data, size_t size)
     at->in_command = true;
 
     /* Send the command. */
-    at->dev->ops->write(at->dev, data, size);
+    at->port->ops->write(at->port, data, size);
 
     /* Wait for the parser thread to collect a response. */
     if (at->timeout) {
@@ -327,13 +329,13 @@ static enum at_response_type at_get_response_type(struct at *at, const char *lin
 
 /****************************************************************************/
 
-static ssize_t at_getline(struct at_device *dev, char *buf, size_t bufsize)
+static ssize_t at_getline(struct at_port *port, char *buf, size_t bufsize)
 {
     size_t cnt = 0;
     while (true) {
         /* Read one character. */
         char ch;
-        if (dev->ops->read(dev, &ch, 1) != 1)
+        if (port->ops->read(port, &ch, 1) != 1)
             return -1;
 
         /* Finish reading on newlines. */
@@ -393,7 +395,7 @@ static void *at_reader(void *arg)
         char line[AT_RESPONSE_LENGTH];
         if (at->expect_dataprompt) {
             /* We're expecting "\r\n> ", read carefully. */
-            if ((len = at->dev->ops->read(at->dev, line, 2)) != 2)
+            if ((len = at->port->ops->read(at->port, line, 2)) != 2)
                 break;
 
             /* Discard newlines. */
@@ -402,7 +404,7 @@ static void *at_reader(void *arg)
 
             if (memcmp(line, "> ", 2)) {
                 /* Oops, this is not the dataprompt. Pretend the read didn't happen. */
-                if ((len = at_getline(at->dev, line+2, sizeof(line)-2)) < 0)
+                if ((len = at_getline(at->port, line+2, sizeof(line)-2)) < 0)
                     break; // TODO: don't die on ENOSPC
             } else {
                 /* Data prompt arrived. Zero-terminate and fall through. */
@@ -410,7 +412,7 @@ static void *at_reader(void *arg)
             }
         } else {
             /* Normal operation: read a line. */
-            if ((len = at_getline(at->dev, line, sizeof(line))) < 0)
+            if ((len = at_getline(at->port, line, sizeof(line))) < 0)
                 break;
         }
 
@@ -464,7 +466,7 @@ static void *at_reader(void *arg)
 
             /* minor buffer overflow here */
             /* also, no error checking */
-            len = at->dev->ops->read(at->dev, line, amount);
+            len = at->port->ops->read(at->port, line, amount);
 
             at_append_response(at, line, len);
             goto loop;

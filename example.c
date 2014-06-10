@@ -14,20 +14,21 @@
 
 #include "attentive.h"
 
+/* Standard UNIX serial port. */
 
-struct at_device_modem {
-    struct at_device dev;
+struct at_port_unix_serial {
+    struct at_port dev;
 
-    const char *port;
+    const char *devpath;
     int fd;
     speed_t baudrate;
 };
 
-static int modem_open(struct at_device *dev)
+static int unix_serial_open(struct at_port *dev)
 {
-    struct at_device_modem *priv = (struct at_device_modem *) dev;
+    struct at_port_unix_serial *priv = (struct at_port_unix_serial *) dev;
 
-    priv->fd = open(priv->port, O_RDWR);
+    priv->fd = open(priv->devpath, O_RDWR);
     if (priv->fd == -1)
         return -1;
 
@@ -39,32 +40,41 @@ static int modem_open(struct at_device *dev)
     return 0;
 }
 
-static ssize_t modem_read(struct at_device *dev, void *buf, size_t len)
+static ssize_t unix_serial_read(struct at_port *dev, void *buf, size_t len)
 {
-    struct at_device_modem *priv = (struct at_device_modem *) dev;
+    struct at_port_unix_serial *priv = (struct at_port_unix_serial *) dev;
 
-    //printf("read %d...\n", priv->fd);
-    int ret = read(priv->fd, buf, len);
-    //printf("read => (%.*s) (%d)\n", (int) len, buf, ret);
-    return ret;
+    return read(priv->fd, buf, len);
 }
 
-static ssize_t modem_write(struct at_device *dev, const void *buf, size_t len)
+static ssize_t unix_serial_write(struct at_port *dev, const void *buf, size_t len)
 {
-    struct at_device_modem *priv = (struct at_device_modem *) dev;
+    struct at_port_unix_serial *priv = (struct at_port_unix_serial *) dev;
 
-    //printf("write %d: (%.*s)\n", priv->fd, (int) len, buf);
     return write(priv->fd, buf, len);
 }
 
-static int modem_close(struct at_device *dev)
+static int unix_serial_close(struct at_port *dev)
 {
-    struct at_device_modem *priv = (struct at_device_modem *) dev;
+    struct at_port_unix_serial *priv = (struct at_port_unix_serial *) dev;
 
     return close(priv->fd);
 }
 
-static enum at_response_type modem_parse_response(struct at_device *dev, const void *line, size_t len)
+static const struct at_port_operations unix_serial_ops = {
+    .open  = unix_serial_open,
+    .read  = unix_serial_read,
+    .write = unix_serial_write,
+    .close = unix_serial_close,
+};
+
+/* Generic (no-op) modem device. */
+
+struct at_device_generic {
+    struct at_device dev;
+};
+
+static enum at_response_type generic_modem_parse_response(struct at_device *dev, const void *line, size_t len)
 {
     (void) dev;
     (void) line;
@@ -73,38 +83,36 @@ static enum at_response_type modem_parse_response(struct at_device *dev, const v
     return AT_RESPONSE_UNKNOWN;
 }
 
-static void modem_handle_urc(struct at_device *dev, const void *line, size_t len)
+static void generic_modem_handle_urc(struct at_device *dev, const void *line, size_t len)
 {
     (void) len;
 
     printf("[%p] URC: %.*s\n", dev, (int) len, (char *) line);
 }
 
-static const struct at_device_ops modem_ops = {
-    .open = modem_open,
-    .read = modem_read,
-    .write = modem_write,
-    .close = modem_close,
-
-    .parse_response = modem_parse_response,
-    .handle_urc = modem_handle_urc,
+static const struct at_device_operations generic_modem_ops = {
+    .parse_response = generic_modem_parse_response,
+    .handle_urc = generic_modem_handle_urc,
 };
 
 int main(int argc, char *argv[])
 {
     assert(argc == 2);
-    const char *port = argv[1];
+    const char *devpath = argv[1];
 
-    /* create AT device */
-    struct at_device_modem priv = {
-        .dev = { .ops = &modem_ops },
-        .port = port,
+    struct at_port_unix_serial port = {
+        .dev = { &unix_serial_ops },
         .baudrate = B115200,
+        .devpath = devpath,
+    };
+
+    struct at_device_generic device = {
+        .dev = { &generic_modem_ops, },
     };
 
     /* create AT channel instance */
     printf("allocating parser...\n");
-    struct at *at = at_alloc((struct at_device *) &priv);
+    struct at *at = at_alloc((struct at_port *) &port, (struct at_device *) &device);
 
     printf("opening port...\n");
     at_open(at);
@@ -114,9 +122,11 @@ int main(int argc, char *argv[])
         "ATE0",
         "AT+CGSN",
         "AT+CCID",
-        "AT+BLAH",
         "AT+CGN",
-        "AT+CCID",
+        "AT+CMEE=0",
+        "AT+BLAH",
+        "AT+CMEE=2",
+        "AT+BLAH",
         NULL
     };
 
