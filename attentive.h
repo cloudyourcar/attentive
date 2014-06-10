@@ -37,7 +37,7 @@ enum at_response_type {
     AT_RESPONSE_FINAL_OK,           /**< Final response. NOT stored. */
     AT_RESPONSE_FINAL,              /**< Final response. Stored. */
     AT_RESPONSE_URC,                /**< Unsolicited Result Code. Passed to URC handler. */
-    _AT_RESPONSE_RAWDATA_FOLLOWS,   /**< @internal (see AT_RESPONSE_RAWDATA_FOLLOWS)*/
+    _AT_RESPONSE_RAWDATA_FOLLOWS,   /**< @internal (see AT_RESPONSE_RAWDATA_FOLLOWS) */
     _AT_RESPONSE_HEXDATA_FOLLOWS,   /**< @internal (see AT_RESPONSE_HEXDATA_FOLLOWS) */
 
     _AT_RESPONSE_ENUM_SIZE_SHOULD_BE_INT32 = INT32_MAX
@@ -49,28 +49,52 @@ enum at_response_type {
 #define AT_RESPONSE_HEXDATA_FOLLOWS(amount) \
     (_AT_RESPONSE_HEXDATA_FOLLOWS | ((amount) << 8))
 
-struct at;
+struct at_device {
+    const struct at_device_ops *ops;
+};
 
-typedef enum at_response_type (*response_parser_t)(const char *line, size_t len);
+typedef enum at_response_type (*at_response_parser_t)(struct at_device *dev, const void *line, size_t len);
 
-typedef void (*urc_callback_t)(const char *line, size_t len);
+struct at_device_ops {
+    int (*open)(struct at_device *dev);
+    ssize_t (*read)(struct at_device *dev, void *buf, size_t len);
+    ssize_t (*write)(struct at_device *dev, const void *buf, size_t len);
+    int (*close)(struct at_device *dev);
+
+    enum at_response_type (*parse_response)(struct at_device *dev, const void *line, size_t len);
+    void (*handle_urc)(struct at_device *dev, const void *line, size_t len);
+};
 
 /**
  * Create an AT channel instance.
  *
- * @param stream File stream connected to the modem.
- * @param modem_parser Modem-specific response line parser.
- * @param urc_callback Modem-specific URC callback.
+ * @param dev AT modem device.
  * @returns Instance pointer on success, NULL on failure.
  */
-struct at *at_open(FILE *istream, FILE *ostream, response_parser_t modem_parser, urc_callback_t urc_callback);
+struct at *at_alloc(struct at_device *dev);
+
+/**
+ * Open the AT channel.
+ *
+ * @param at AT channel instance.
+ * @returns Zero on success, -1 and sets errno on failure.
+ */
+int at_open(struct at *at);
+
+/**
+ * Close the AT channel.
+ *
+ * @param at AT channel instance.
+ * @returns Zero on success, -1 and sets errno on failure.
+ */
+int at_close(struct at *at);
 
 /**
  * Close and free an AT channel instance.
  *
  * @param at AT channel instance.
  */
-void at_close(struct at *at);
+void at_free(struct at *at);
 
 /**
  * Make the parser expect a dataprompt for the next command.
@@ -92,7 +116,7 @@ void at_expect_dataprompt(struct at *at);
  * @param at AT channel instance.
  * @param parser Per-command response parser.
  */
-void at_set_command_response_parser(struct at *at, response_parser_t parser);
+void at_set_command_response_parser(struct at *at, at_response_parser_t parser);
 
 /**
  * Set command timeout in seconds.
