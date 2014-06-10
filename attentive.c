@@ -456,7 +456,6 @@ static void *at_reader(void *arg)
             at->in_command = false;
             pthread_cond_signal(&at->cond);
             goto loop;
-
         }
 
         if (at_response_is_rawdata(response_type)) {
