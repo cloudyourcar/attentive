@@ -162,7 +162,7 @@ int at_close(struct at *at)
 
     /* Close the device. */
     printf("at_close: closing device\n");
-    int result = at->port->ops->open(at->port);
+    int result = at->port->ops->close(at->port);
     if (result == 0) {
         printf("at_close: success\n");
         pthread_cond_signal(&at->cond);
