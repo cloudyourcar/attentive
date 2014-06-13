@@ -7,16 +7,12 @@
 CFLAGS = -g -Wall -Wextra -Werror
 LDFLAGS = -lcheck
 
-all: scan-build test example
+all: test example
 	@echo "+++ All good."""
 
 test: tests
 	@echo "+++ Running Check test suite..."
 	./tests
-
-scan-build: clean
-	@echo "+++ Running Clang Static Analyzer..."
-	scan-build $(MAKE) tests
 
 clean:
 	$(RM) tests *.o
