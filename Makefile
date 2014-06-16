@@ -21,5 +21,6 @@ tests: tests.o attentive.o
 example: example.o attentive.o
 tests.o: tests.c attentive.h
 attentive.o: attentive.c attentive.h
+parser.o: parser.c parser.h
 
 .PHONY: all test scan-build clean
