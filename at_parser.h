@@ -41,14 +41,48 @@ struct at_parser_callbacks {
     void (*handle_urc)(const void *line, size_t len, void *priv);
 };
 
+/**
+ * Allocate a parser instance.
+ *
+ * @param cbs Parser callbacks. Structure is not copied; must persist for
+ *            the lifetime of the parser.
+ * @param bufsize Response buffer size on bytes.
+ * @param priv Private argument; passed to callbacks.
+ * @returns Parser instance pointer.
+ */
 struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t bufsize, void *priv);
 
+/**
+ * Reset parser instance to initial state.
+ *
+ * @param parser Parser instance.
+ */
 void at_parser_reset(struct at_parser *parser);
 
+/**
+ * Inform the parser that a command will be invoked. Causes a response callback
+ * at the next command completion.
+ *
+ * @param parser Parser instance.
+ * @param dataprompt If true, treat "> " as an OK response.
+ * @param scanner Custom line scanner callback for the current command.
+ */
 void at_parser_await_response(struct at_parser *parser, bool dataprompt, line_scanner_t scanner);
 
+/**
+ * Feed parser. Callbacks are always called from this function's context.
+ *
+ * @param parser Parser instance.
+ * @param data Bytes to feed.
+ * @param len Number of bytes in data.
+ */
 void at_parser_feed(struct at_parser *parser, const void *data, size_t len);
 
+/**
+ * Deallocate a parser instance.
+ *
+ * @param parser Parser instance allocated with at_parser_alloc.
+ */
 void at_parser_free(struct at_parser *parser);
 
 /**

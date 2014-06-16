@@ -8,6 +8,7 @@ enum at_parser_state {
     STATE_READLINE,
     STATE_DATAPROMPT,
     STATE_RAWDATA,
+    STATE_HEXDATA,
 };
 
 struct at_parser {
@@ -17,11 +18,12 @@ struct at_parser {
 
     enum at_parser_state state;
     size_t data_left;
+    int nibble;
 
-    char *response;
-    size_t response_length;
-    size_t response_bufsize;
-    size_t current_line_start;
+    char *buf;
+    size_t buf_used;
+    size_t buf_size;
+    size_t buf_current;
 };
 
 static const char *ok_responses[] = {
@@ -47,20 +49,20 @@ struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t 
 {
     /* Allocate parser struct. */
     struct at_parser *parser = (struct at_parser *) malloc(sizeof(struct at_parser));
-    if (!parser) {
+    if (parser == NULL) {
         errno = ENOMEM;
         return NULL;
     }
 
     /* Allocate response buffer. */
-    parser->response = malloc(bufsize);
-    if (!parser->response) {
+    parser->buf = malloc(bufsize);
+    if (parser->buf == NULL) {
         free(parser);
         errno = ENOMEM;
         return NULL;
     }
     parser->cbs = cbs;
-    parser->response_bufsize = bufsize;
+    parser->buf_size = bufsize;
     parser->priv = priv;
 
     /* Prepare instance. */
@@ -73,8 +75,8 @@ void at_parser_reset(struct at_parser *parser)
 {
     parser->state = STATE_IDLE;
     parser->per_command_scanner = NULL;
-    parser->response_length = 0;
-    parser->current_line_start = 0;
+    parser->buf_used = 0;
+    parser->buf_current = 0;
     parser->data_left = 0;
 }
 
@@ -107,6 +109,103 @@ static enum at_response_type generic_line_scanner(const char *line, size_t len)
         return AT_RESPONSE_INTERMEDIATE;
 }
 
+static void parser_append(struct at_parser *parser, char ch)
+{
+    if (parser->buf_used < parser->buf_size-1)
+        parser->buf[parser->buf_used++] = ch;
+}
+
+/**
+ * Helper, called whenever a full response line is collected.
+ */
+static void parser_handle_line(struct at_parser *parser)
+{
+    /* Skip empty lines. */
+    if (parser->buf_used == parser->buf_current)
+        return;
+
+    /* NULL-terminate the response .*/
+    parser->buf[parser->buf_used] = '\0';
+
+    /* Extract line address & length for later use. */
+    const char *line = parser->buf + parser->buf_current;
+    size_t len = parser->buf_used - parser->buf_current;
+
+    /* Log the received line. */
+    printf("< %.*s\n", (int) len, line);
+
+    /* Determine response type. */
+    enum at_response_type type = AT_RESPONSE_UNKNOWN;
+    if (parser->per_command_scanner)
+        type = parser->per_command_scanner(line, len, parser->priv);
+    if (!type && parser->cbs->scan_line)
+        type = parser->cbs->scan_line(line, len, parser->priv);
+    if (!type)
+        type = generic_line_scanner(line, len);
+
+    /* Expected URCs and all unexpected lines are sent to URC handler. */
+    if (type == AT_RESPONSE_URC || parser->state == STATE_IDLE)
+    {
+        /* Fire the callback on the URC line. */
+        parser->cbs->handle_urc(parser->buf + parser->buf_current,
+                                parser->buf_used - parser->buf_current,
+                                parser->priv);
+
+        /* Discard the URC line from the buffer. */
+        parser->buf_used = parser->buf_current;
+
+        return;
+    }
+
+    /* Accumulate everything that's not a final OK. */
+    if (type == AT_RESPONSE_FINAL_OK) {
+        /* Include the line in the buffer. */
+        parser->buf_current = parser->buf_used;
+    } else {
+        /* Discard the line from the buffer. */
+        parser->buf_used = parser->buf_current;
+        parser->buf[parser->buf_used] = '\0';
+    }
+
+    /* Act on the response type. */
+    switch (type) {
+        case AT_RESPONSE_FINAL_OK:
+        case AT_RESPONSE_FINAL:
+        {
+            /* Fire the response callback. */
+            parser->cbs->handle_response(parser->buf, parser->buf_used, parser->priv);
+
+            /* Go back to idle state. */
+            at_parser_reset(parser);
+        }
+        break;
+
+        case _AT_RESPONSE_RAWDATA_FOLLOWS:
+        {
+            /* Switch parser state to rawdata mode. */
+            parser->data_left = (int)type >> 8;
+            parser->state = STATE_RAWDATA;
+        }
+        break;
+
+        case _AT_RESPONSE_HEXDATA_FOLLOWS:
+        {
+            /* Switch parser state to hexdata mode. */
+            parser->data_left = (int)type >> 8;
+            parser->nibble = -1;
+            parser->state = STATE_HEXDATA;
+        }
+        break;
+
+        default:
+        {
+            /* Add a newline and carry on. */
+            parser_append(parser, '\n');
+        }
+        break;
+    }
+}
+
 void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
 {
     const uint8_t *buf = data;
@@ -121,86 +220,18 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
             {
                 uint8_t ch = *buf++; len--;
 
-                /* Accept any line ending convention. */
-                if (ch == '\r')
-                    ch = '\n';
+                /* Append the character if it's not a newline. */
+                if ((ch != '\r') && (ch != '\n'))
+                    parser_append(parser, ch);
 
-                /* If a complete line was just received... */
+                /* Handle full lines. */
                 if ((ch == '\r') ||
                     (ch == '\n') ||
                     (parser->state == STATE_DATAPROMPT &&
-                     parser->response_length == 2 &&
-                     !memcmp(parser->response, "> ", 2)))
+                     parser->buf_used == 2 &&
+                     !memcmp(parser->buf, "> ", 2)))
                 {
-                    /* Skip empty lines. */
-                    if (parser->response_length == parser->current_line_start)
-                        continue;
-
-                    /* NULL-terminate the response .*/
-                    parser->response[parser->response_length] = '\0';
-
-                    printf("< %s\n", parser->response);
-
-                    /* Determine response type. */
-                    enum at_response_type type = AT_RESPONSE_UNKNOWN;
-                    if (parser->per_command_scanner)
-                        type = parser->per_command_scanner(parser->response, parser->response_length, parser->priv);
-                    if (!type && parser->cbs->scan_line)
-                        type = parser->cbs->scan_line(parser->response, parser->response_length, parser->priv);
-                    if (!type)
-                        type = generic_line_scanner(parser->response, parser->response_length);
-
-                    /* Expected URCs and all unexpected lines go here. */
-                    if (type == AT_RESPONSE_URC || parser->state == STATE_IDLE)
-                    {
-                        /* Fire the callback on the URC line. */
-                        parser->cbs->handle_urc(parser->response + parser->current_line_start,
-                                                parser->response_length - parser->current_line_start,
-                                                parser->priv);
-
-                        /* Discard the URC line from the buffer. */
-                        parser->response_length = parser->current_line_start;
-
-                        continue;
-                    }
-
-                    if (type == AT_RESPONSE_FINAL_OK) {
-                        /* Discard the response from the buffer. */
-                        parser->response_length = parser->current_line_start;
-                        parser->response[parser->response_length] = '\0';
-                    } else {
-                        /* Include the response in the buffer. */
-                        parser->current_line_start = parser->response_length;
-                    }
-
-                    /* Switch parser state if rawdata is to follow. */
-                    if (type == _AT_RESPONSE_RAWDATA_FOLLOWS) {
-                        parser->data_left = (int)type >> 8;
-                        parser->state = STATE_RAWDATA;
-                        continue;
-                    }
-
-                    if (type == AT_RESPONSE_FINAL_OK || type == AT_RESPONSE_FINAL)
-                    {
-                        /* Remove the last newline character. */
-                        while (parser->response_length > 0 && parser->response[parser->response_length-1] == '\n')
-                        {
-                            parser->response_length--;
-                            parser->response[parser->response_length] = '\0';
-                        }
-
-                        /* Fire the response callback. */
-                        parser->cbs->handle_response(parser->response, parser->response_length, parser->priv);
-
-                        /* Go back to idle state. */
-                        at_parser_reset(parser);
-
-                        continue;
-                    }
-                } else {
-                    /* Append the character if there's space left. */
-                    if (parser->response_length < parser->response_bufsize-1)
-                        parser->response[parser->response_length++] = ch;
+                    parser_handle_line(parser);
                 }
             }
             break;
@@ -208,12 +239,30 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
             case STATE_RAWDATA: {
                 uint8_t ch = *buf++;
 
-                if (parser->data_left > 0 &&
-                    parser->response_length < parser->response_bufsize-1)
-                {
+                if (parser->data_left > 0) {
+                    parser_append(parser, ch);
                     parser->data_left--;
-                    parser->response[parser->response_length++] = ch;
                 }
+
+                if (parser->data_left == 0) {
+                    parser_append(parser, '\n');
+                    parser->state = STATE_READLINE;
+                }
+            } break;
+
+            case STATE_HEXDATA: {
+#if 0
+                uint8_t ch = *buf++;
+
+                if (parser->data_left > 0) {
+                    // TODO
+                }
+
+                if (parser->data_left == 0) {
+                    parser_append(parser, '\n');
+                    parser->state = STATE_READLINE;
+                }
+#endif
             } break;
         }
     }
@@ -221,7 +270,7 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
 
 void at_parser_free(struct at_parser *parser)
 {
-    free(parser->response);
+    free(parser->buf);
     free(parser);
 }
 
