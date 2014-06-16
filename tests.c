@@ -233,7 +233,7 @@ START_TEST(test_parser_rawdata)
     expect_prepare();
 
     /* I'd love to put 0x00 here, but the entire string handling in Check croaks then. */
-    expect_response("+RAWDATA: 8\nabcd\x01\xffxyzp");
+    expect_response("+RAWDATA: 10\nabcd\x01\xffxyzp");
     expect_urc("RING");
     expect_urc("RING");
     expect_urc("RING");
