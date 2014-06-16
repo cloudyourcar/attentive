@@ -46,11 +46,13 @@ void handle_urc(const void *line, size_t len, void *priv)
 
 void expect_response(const char *line)
 {
+    printf("expecting response: '%s'\n", line);
     g_queue_push_tail(&expected_responses, (gpointer) line);
 }
 
 void expect_urc(const char *line)
 {
+    printf("expecting urc: '%s'\n", line);
     g_queue_push_tail(&expected_urcs, (gpointer) line);
 }
 
