@@ -4,8 +4,8 @@
 # the terms of the Do What The Fuck You Want To Public License, Version 2, as
 # published by Sam Hocevar. See the COPYING file for more details.
 
-CFLAGS = -g -Wall -Wextra -Werror -O2 $(shell pkg-config --cflags $(LIBRARIES))
-LDFLAGS = $(shell pkg-config --libs $(LIBRARIES))
+CFLAGS = -std=c99 -O2 -g -Wall -Wextra -Werror $(shell pkg-config --cflags $(LIBRARIES))
+LDLIBS = $(shell pkg-config --libs $(LIBRARIES))
 
 LIBRARIES = check glib-2.0
 

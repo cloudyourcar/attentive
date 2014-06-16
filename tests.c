@@ -33,14 +33,14 @@ void assert_line_expected(const void *line, size_t len, GQueue *q)
 void handle_response(const void *line, size_t len, void *priv)
 {
     (void) priv;
-    printf("response: >>>%.*s<<<\n", (int) len, line);
+    printf("response: >>>%.*s<<<\n", (int) len, (char *) line);
     assert_line_expected(line, len, &expected_responses);
 }
 
 void handle_urc(const void *line, size_t len, void *priv)
 {
     (void) priv;
-    printf("urc: >>>%.*s<<<\n", (int) len, line);
+    printf("urc: >>>%.*s<<<\n", (int) len, (char *) line);
     assert_line_expected(line, len, &expected_urcs);
 }
 
@@ -68,7 +68,7 @@ void expect_nothing(void)
 
 START_TEST(test_parser_alloc)
 {
-    struct at_parser_callbacks cbs = {};
+    struct at_parser_callbacks cbs = {0};
     struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
     ck_assert(parser != NULL);
     at_parser_free(parser);
