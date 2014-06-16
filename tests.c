@@ -33,14 +33,14 @@ void assert_line_expected(const void *line, size_t len, GQueue *q)
 void handle_response(const void *line, size_t len, void *priv)
 {
     (void) priv;
-    printf("response: >>>%.*s<<<\n", (int) len, (char *) line);
+    printf("response: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
     assert_line_expected(line, len, &expected_responses);
 }
 
 void handle_urc(const void *line, size_t len, void *priv)
 {
     (void) priv;
-    printf("urc: >>>%.*s<<<\n", (int) len, (char *) line);
+    printf("urc: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
     assert_line_expected(line, len, &expected_urcs);
 }
 
@@ -70,6 +70,8 @@ void expect_nothing(void)
 
 START_TEST(test_parser_alloc)
 {
+    printf(":: test_parser_alloc\n");
+
     struct at_parser_callbacks cbs = {0};
     struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
     ck_assert(parser != NULL);
@@ -79,6 +81,8 @@ END_TEST
 
 START_TEST(test_parser_response)
 {
+    printf(":: test_parser_response\n");
+
     struct at_parser_callbacks cbs = {
         .handle_response = handle_response,
         .handle_urc = handle_urc,
@@ -121,6 +125,8 @@ END_TEST
 
 START_TEST(test_parser_urc)
 {
+    printf(":: test_parser_urc\n");
+
     struct at_parser_callbacks cbs = {
         .handle_response = handle_response,
         .handle_urc = handle_urc,
@@ -148,6 +154,8 @@ END_TEST
 
 START_TEST(test_parser_mixed)
 {
+    printf(":: test_parser_mixed\n");
+
     struct at_parser_callbacks cbs = {
         .handle_response = handle_response,
         .handle_urc = handle_urc,
