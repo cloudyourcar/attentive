@@ -1,5 +1,6 @@
 #include "at_parser.h"
 
+#include <stdio.h>
 #include <string.h>
 
 enum at_parser_state {
@@ -118,7 +119,7 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
             case STATE_READLINE:
             case STATE_DATAPROMPT:
             {
-                uint8_t ch = *buf++;
+                uint8_t ch = *buf++; len--;
 
                 /* Accept any line ending convention. */
                 if (ch == '\r')
@@ -135,8 +136,14 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
                     /* Remove the last newline character. */
                     parser->response_length--;
 
+                    /* Skip empty lines. */
+                    if (parser->response_length == parser->current_line_start)
+                        continue;
+
                     /* NULL-terminate the response .*/
                     parser->response[parser->response_length] = '\0';
+
+                    printf("< %s\n", parser->response);
 
                     /* Determine response type. */
                     enum at_response_type type = AT_RESPONSE_UNKNOWN;
@@ -159,6 +166,9 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
                         parser->response_length = parser->current_line_start;
 
                         continue;
+                    } else {
+                        /* Advance the "current line start" pointer. */
+                        parser->current_line_start = parser->response_length;
                     }
 
                     /* Switch parser state if rawdata is to follow. */
