@@ -242,8 +242,7 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
                 }
 
                 /* Handle full lines. */
-                if ((ch == '\r') ||
-                    (ch == '\n') ||
+                if ((ch == '\n') ||
                     (parser->state == STATE_DATAPROMPT &&
                      parser->buf_used == 2 &&
                      !memcmp(parser->buf, "> ", 2)))
