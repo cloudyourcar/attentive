@@ -1,4 +1,4 @@
-#include "parser.h"
+#include "at_parser.h"
 
 #include <string.h>
 
@@ -12,16 +12,15 @@ enum at_parser_state {
 struct at_parser {
     const struct at_parser_callbacks *cbs;
     void *priv;
+    line_scanner_t per_command_scanner;
 
     enum at_parser_state state;
-    line_scanner_t per_command_scanner;
+    size_t data_left;
 
     char *response;
     size_t response_length;
     size_t response_bufsize;
     size_t current_line_start;
-
-    size_t data_left;
 };
 
 static const char *ok_responses[] = {
@@ -159,6 +158,13 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
                         /* Discard the URC line from the buffer. */
                         parser->response_length = parser->current_line_start;
 
+                        continue;
+                    }
+
+                    /* Switch parser state if rawdata is to follow. */
+                    if (type == _AT_RESPONSE_RAWDATA_FOLLOWS) {
+                        parser->data_left = (int)type >> 8;
+                        parser->state = STATE_RAWDATA;
                         continue;
                     }
 

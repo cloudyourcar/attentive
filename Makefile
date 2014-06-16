@@ -19,10 +19,10 @@ test: tests
 clean:
 	$(RM) tests *.o
 
-tests: tests.o attentive.o
+tests: tests.o at_parser.o
 example: example.o attentive.o
-tests.o: tests.c attentive.h
+tests.o: tests.c at_parser.h
 attentive.o: attentive.c attentive.h
-parser.o: parser.c parser.h
+at_parser.o: at_parser.c at_parser.h
 
-.PHONY: all test scan-build clean
+.PHONY: all test clean

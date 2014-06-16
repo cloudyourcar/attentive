@@ -1,5 +1,5 @@
-#ifndef ATTENTIVE_PARSER_H
-#define ATTENTIVE_PARSER_H
+#ifndef AT_PARSER_H
+#define AT_PARSER_H
 
 #include <errno.h>
 #include <stdbool.h>

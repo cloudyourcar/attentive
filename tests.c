@@ -6,26 +6,49 @@
  * published by Sam Hocevar. See the COPYING file for more details.
  */
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
+
 #include <check.h>
+#include <glib.h>
 
-#include "attentive.h"
+#include "at_parser.h"
 
-START_TEST(test_attentive_dummy)
+
+GQueue expected_urcs = G_QUEUE_INIT;
+GQueue expected_responses = G_QUEUE_INIT;
+
+
+START_TEST(test_parser_alloc)
 {
-    ck_assert(true);
+    struct at_parser_callbacks cbs = {};
+
+    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    ck_assert(parser != NULL);
+    at_parser_free(parser);
+}
+END_TEST
+
+START_TEST(test_parser_urc)
+{
+    struct at_parser_callbacks cbs = {};
+
+    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    ck_assert(parser != NULL);
+    at_parser_free(parser);
 }
 END_TEST
 
 Suite *attentive_suite(void)
 {
-    Suite *s = suite_create ("attentive");
+    Suite *s = suite_create("attentive");
+    TCase *tc;
   
-    TCase *tc_dummy = tcase_create("attentive_dummy");
-    tcase_add_test(tc_dummy, test_attentive_dummy);
-    suite_add_tcase(s, tc_dummy);
+    tc = tcase_create("parser");
+    tcase_add_test(tc, test_parser_alloc);
+    tcase_add_test(tc, test_parser_urc);
+    suite_add_tcase(s, tc);
 
     return s;
 }
