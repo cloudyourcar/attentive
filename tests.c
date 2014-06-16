@@ -177,6 +177,35 @@ START_TEST(test_parser_mixed)
 }
 END_TEST
 
+START_TEST(test_parser_overflow)
+{
+    printf(":: test_parser_overflow\n");
+
+    struct at_parser_callbacks cbs = {
+        .handle_response = handle_response,
+        .handle_urc = handle_urc,
+    };
+    struct at_parser *parser = at_parser_alloc(&cbs, 8, NULL);
+    ck_assert(parser != NULL);
+
+    expect_prepare();
+
+    /* this one fits... */
+    expect_response("1234");
+    at_parser_await_response(parser, false, NULL);
+    at_parser_feed(parser, STR_LEN("1234\r\nOK\r\n"));
+    expect_nothing();
+
+    /* this one doesn't. */
+    /* TODO: We could be better behaved when it comes to overflows. Not crashing is enough for now. */
+    at_parser_await_response(parser, false, NULL);
+    at_parser_feed(parser, STR_LEN("12345\r\nOK\r\n"));
+    expect_nothing();
+
+    at_parser_free(parser);
+}
+END_TEST
+
 Suite *attentive_suite(void)
 {
     Suite *s = suite_create("attentive");
@@ -187,6 +216,7 @@ Suite *attentive_suite(void)
     tcase_add_test(tc, test_parser_response);
     tcase_add_test(tc, test_parser_urc);
     tcase_add_test(tc, test_parser_mixed);
+    tcase_add_test(tc, test_parser_overflow);
     suite_add_tcase(s, tc);
 
     return s;
