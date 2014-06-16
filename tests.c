@@ -114,7 +114,7 @@ START_TEST(test_parser_response)
     at_parser_feed(parser, STR_LEN("123456789\r\nOK\r\n"));
     expect_nothing();
 
-    expect_response("123456789\r\nERROR");
+    expect_response("123456789\nERROR");
     at_parser_await_response(parser, false, NULL);
     at_parser_feed(parser, STR_LEN("123456789\r\nERROR\r\n"));
     expect_nothing();
@@ -165,12 +165,12 @@ START_TEST(test_parser_mixed)
 
     expect_prepare();
 
-    expect_response("12345");
-    expect_response("67890");
+    expect_response("12345\n67890");
+    expect_urc("RING");
     expect_urc("RING");
     expect_urc("RING");
     at_parser_await_response(parser, false, NULL);
-    at_parser_feed(parser, STR_LEN("12345\r\nRING\r\n67890\r\nOK\r\n"));
+    at_parser_feed(parser, STR_LEN("\r\n12345\r\nRING\r\n67890\r\nRING\r\nOK\r\n\r\nRING\r\n"));
     expect_nothing();
 
     at_parser_free(parser);

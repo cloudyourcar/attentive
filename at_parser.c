@@ -132,7 +132,8 @@ static void parser_handle_line(struct at_parser *parser)
     size_t len = parser->buf_used - parser->buf_current;
 
     /* Log the received line. */
-    printf("< %.*s\n", (int) len, line);
+    printf("[%.*s] (%d)\n", (int) parser->buf_used, parser->buf, (int) parser->buf_used);
+    printf("< '%.*s'\n", (int) len, line);
 
     /* Determine response type. */
     enum at_response_type type = AT_RESPONSE_UNKNOWN;
@@ -151,6 +152,10 @@ static void parser_handle_line(struct at_parser *parser)
                                 parser->buf_used - parser->buf_current,
                                 parser->priv);
 
+        /* Discard the newline before the URC (if any). */
+        if (parser->buf_current > 0)
+            parser->buf_current--;
+
         /* Discard the URC line from the buffer. */
         parser->buf_used = parser->buf_current;
 
@@ -158,10 +163,14 @@ static void parser_handle_line(struct at_parser *parser)
     }
 
     /* Accumulate everything that's not a final OK. */
-    if (type == AT_RESPONSE_FINAL_OK) {
+    if (type != AT_RESPONSE_FINAL_OK) {
         /* Include the line in the buffer. */
         parser->buf_current = parser->buf_used;
     } else {
+        /* Discard the newline before the OK (if any). */
+        if (parser->buf_current > 0)
+            parser->buf_current--;
+
         /* Discard the line from the buffer. */
         parser->buf_used = parser->buf_current;
         parser->buf[parser->buf_used] = '\0';
@@ -199,8 +208,7 @@ static void parser_handle_line(struct at_parser *parser)
 
         default:
         {
-            /* Add a newline and carry on. */
-            parser_append(parser, '\n');
+            /* Keep calm and carry on. */
         }
         break;
     }
@@ -220,9 +228,17 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
             {
                 uint8_t ch = *buf++; len--;
 
-                /* Append the character if it's not a newline. */
-                if ((ch != '\r') && (ch != '\n'))
+                if ((ch != '\r') && (ch != '\n')) {
+                    /* Add a newline if there's some preceding content. */
+                    if (parser->buf_used > 0 && parser->buf_current == parser->buf_used)
+                    {
+                        parser_append(parser, '\n');
+                        parser->buf_current = parser->buf_used;
+                    }
+
+                    /* Append the character if it's not a newline. */
                     parser_append(parser, ch);
+                }
 
                 /* Handle full lines. */
                 if ((ch == '\r') ||
