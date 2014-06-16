@@ -60,7 +60,7 @@ void expect_prepare(void)
     g_queue_clear(&expected_urcs);
 }
 
-void expect_finish(void)
+void expect_nothing(void)
 {
     ck_assert(g_queue_is_empty(&expected_responses));
     ck_assert(g_queue_is_empty(&expected_urcs));
@@ -71,32 +71,6 @@ START_TEST(test_parser_alloc)
     struct at_parser_callbacks cbs = {};
     struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
     ck_assert(parser != NULL);
-    at_parser_free(parser);
-}
-END_TEST
-
-START_TEST(test_parser_urc)
-{
-    struct at_parser_callbacks cbs = {
-        .handle_response = handle_response,
-        .handle_urc = handle_urc,
-    };
-    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
-    ck_assert(parser != NULL);
-
-    expect_prepare();
-
-    expect_urc("RING");
-    at_parser_feed(parser, STR_LEN("RING\r\n"));
-
-    expect_urc("+HERP");
-    expect_urc("+DERP");
-    expect_urc("+DERP");
-    at_parser_feed(parser, STR_LEN("+HER"));
-    at_parser_feed(parser, STR_LEN("P\r\n+DERP\r\n+DERP"));
-    at_parser_feed(parser, STR_LEN("\r\n"));
-    expect_finish();
-
     at_parser_free(parser);
 }
 END_TEST
@@ -115,20 +89,56 @@ START_TEST(test_parser_response)
     expect_response("ERROR");
     at_parser_await_response(parser, false, NULL);
     at_parser_feed(parser, STR_LEN("ERROR\r\n"));
+    expect_nothing();
+
+    at_parser_await_response(parser, false, NULL);
+    at_parser_feed(parser, STR_LEN("\r\n\r\n\r\n\r\n\r\n"));
+    expect_nothing();
+    expect_response("ERROR");
+    at_parser_feed(parser, STR_LEN("ERROR\r\n"));
+    expect_nothing();
 
     expect_response("");
     at_parser_await_response(parser, false, NULL);
     at_parser_feed(parser, STR_LEN("OK\r\n"));
+    expect_nothing();
 
     expect_response("123456789");
     at_parser_await_response(parser, false, NULL);
     at_parser_feed(parser, STR_LEN("123456789\r\nOK\r\n"));
+    expect_nothing();
 
     expect_response("123456789\r\nERROR");
     at_parser_await_response(parser, false, NULL);
     at_parser_feed(parser, STR_LEN("123456789\r\nERROR\r\n"));
+    expect_nothing();
 
-    expect_finish();
+    at_parser_free(parser);
+}
+END_TEST
+
+START_TEST(test_parser_urc)
+{
+    struct at_parser_callbacks cbs = {
+        .handle_response = handle_response,
+        .handle_urc = handle_urc,
+    };
+    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    ck_assert(parser != NULL);
+
+    expect_prepare();
+
+    expect_urc("RING");
+    at_parser_feed(parser, STR_LEN("RING\r\n"));
+    expect_nothing();
+
+    expect_urc("+HERP");
+    expect_urc("+DERP");
+    expect_urc("+DERP");
+    at_parser_feed(parser, STR_LEN("+HER"));
+    at_parser_feed(parser, STR_LEN("P\r\n+DERP\r\n+DERP"));
+    at_parser_feed(parser, STR_LEN("\r\n"));
+    expect_nothing();
 
     at_parser_free(parser);
 }
@@ -151,8 +161,7 @@ START_TEST(test_parser_mixed)
     expect_urc("RING");
     at_parser_await_response(parser, false, NULL);
     at_parser_feed(parser, STR_LEN("12345\r\nRING\r\n67890\r\nOK\r\n"));
-
-    expect_finish();
+    expect_nothing();
 
     at_parser_free(parser);
 }
@@ -165,8 +174,8 @@ Suite *attentive_suite(void)
   
     tc = tcase_create("parser");
     tcase_add_test(tc, test_parser_alloc);
-    tcase_add_test(tc, test_parser_urc);
     tcase_add_test(tc, test_parser_response);
+    tcase_add_test(tc, test_parser_urc);
     tcase_add_test(tc, test_parser_mixed);
     suite_add_tcase(s, tc);
 

@@ -125,17 +125,13 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
                 if (ch == '\r')
                     ch = '\n';
 
-                /* Append the character if there's any space left. */
-                if (parser->response_length < parser->response_bufsize-1)
-                    parser->response[parser->response_length++] = ch;
-
-                if (ch == '\n' || (parser->state == STATE_DATAPROMPT &&
-                                   parser->response_length == 2 &&
-                                   !memcmp(parser->response, "> ", 2)))
+                /* If a complete line was just received... */
+                if ((ch == '\r') ||
+                    (ch == '\n') ||
+                    (parser->state == STATE_DATAPROMPT &&
+                     parser->response_length == 2 &&
+                     !memcmp(parser->response, "> ", 2)))
                 {
-                    /* Remove the last newline character. */
-                    parser->response_length--;
-
                     /* Skip empty lines. */
                     if (parser->response_length == parser->current_line_start)
                         continue;
@@ -186,6 +182,13 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
 
                     if (type == AT_RESPONSE_FINAL_OK || type == AT_RESPONSE_FINAL)
                     {
+                        /* Remove the last newline character. */
+                        while (parser->response_length > 0 && parser->response[parser->response_length-1] == '\n')
+                        {
+                            parser->response_length--;
+                            parser->response[parser->response_length] = '\0';
+                        }
+
                         /* Fire the response callback. */
                         parser->cbs->handle_response(parser->response, parser->response_length, parser->priv);
 
@@ -194,6 +197,10 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
 
                         continue;
                     }
+                } else {
+                    /* Append the character if there's space left. */
+                    if (parser->response_length < parser->response_bufsize-1)
+                        parser->response[parser->response_length++] = ch;
                 }
             }
             break;
