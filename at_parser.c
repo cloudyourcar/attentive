@@ -166,8 +166,14 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
                         parser->response_length = parser->current_line_start;
 
                         continue;
+                    }
+
+                    if (type == AT_RESPONSE_FINAL_OK) {
+                        /* Discard the response from the buffer. */
+                        parser->response_length = parser->current_line_start;
+                        parser->response[parser->response_length] = '\0';
                     } else {
-                        /* Advance the "current line start" pointer. */
+                        /* Include the response in the buffer. */
                         parser->current_line_start = parser->response_length;
                     }
 

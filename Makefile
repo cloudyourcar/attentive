@@ -17,7 +17,7 @@ test: tests
 	./tests
 
 clean:
-	$(RM) tests *.o
+	$(RM) tests example *.o
 
 tests: tests.o at_parser.o
 example: example.o attentive.o
