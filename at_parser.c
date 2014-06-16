@@ -177,7 +177,7 @@ static void parser_handle_line(struct at_parser *parser)
     }
 
     /* Act on the response type. */
-    switch (type) {
+    switch (type & _AT_RESPONSE_TYPE_MASK) {
         case AT_RESPONSE_FINAL_OK:
         case AT_RESPONSE_FINAL:
         {
@@ -194,6 +194,7 @@ static void parser_handle_line(struct at_parser *parser)
             /* Switch parser state to rawdata mode. */
             parser->data_left = (int)type >> 8;
             parser->state = STATE_RAWDATA;
+            printf("rawdata follows (%d bytes)\n", (int) parser->data_left);
         }
         break;
 
@@ -262,6 +263,7 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
 
                 if (parser->data_left == 0) {
                     parser_append(parser, '\n');
+                    parser->buf_current = parser->buf_used;
                     parser->state = STATE_READLINE;
                 }
             } break;

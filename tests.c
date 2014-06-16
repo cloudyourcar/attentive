@@ -177,6 +177,18 @@ START_TEST(test_parser_mixed)
 }
 END_TEST
 
+static enum at_response_type line_scanner(const void *line, size_t len, void *priv)
+{
+    (void) len;
+    (void) priv;
+
+    int bytes;
+    if (sscanf(line, "+RAWDATA: %d", &bytes) == 1)
+        return AT_RESPONSE_RAWDATA_FOLLOWS(bytes);
+
+    return AT_RESPONSE_UNKNOWN;
+}
+
 START_TEST(test_parser_overflow)
 {
     printf(":: test_parser_overflow\n");
@@ -206,6 +218,33 @@ START_TEST(test_parser_overflow)
 }
 END_TEST
 
+START_TEST(test_parser_rawdata)
+{
+    printf(":: test_parser_rawdata\n");
+
+    struct at_parser_callbacks cbs = {
+        .handle_response = handle_response,
+        .handle_urc = handle_urc,
+        .scan_line = line_scanner,
+    };
+    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    ck_assert(parser != NULL);
+
+    expect_prepare();
+
+    /* I'd love to put 0x00 here, but the entire string handling in Check croaks then. */
+    expect_response("+RAWDATA: 8\nabcd\x01\xffxyzp");
+    expect_urc("RING");
+    expect_urc("RING");
+    expect_urc("RING");
+    at_parser_await_response(parser, false, NULL);
+    at_parser_feed(parser, STR_LEN("\r\nRING\r\n+RAWDATA: 10\r\nabcd\x01\xFFxyzp\r\nRING\r\nOK\r\nRING\r\n"));
+    expect_nothing();
+
+    at_parser_free(parser);
+}
+END_TEST
+
 Suite *attentive_suite(void)
 {
     Suite *s = suite_create("attentive");
@@ -217,6 +256,7 @@ Suite *attentive_suite(void)
     tcase_add_test(tc, test_parser_urc);
     tcase_add_test(tc, test_parser_mixed);
     tcase_add_test(tc, test_parser_overflow);
+    tcase_add_test(tc, test_parser_rawdata);
     suite_add_tcase(s, tc);
 
     return s;

@@ -30,6 +30,8 @@ enum at_response_type {
 /** The line is followed by a newline and a block of hex-escaped data. */
 #define AT_RESPONSE_HEXDATA_FOLLOWS(amount) \
     (_AT_RESPONSE_HEXDATA_FOLLOWS | ((amount) << 8))
+/** @internal */
+#define _AT_RESPONSE_TYPE_MASK 0xff
 
 /** Line scanner. Should return one of the AT_RESPONSE_* values if the line is
  *  identified or AT_RESPONSE_UNKNOWN to fall back to the default scanner. */
