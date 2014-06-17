@@ -27,7 +27,7 @@
 
 ## License
 
-Minmea was written by Kosma Moczek at [Cloud Your Car](https://cloudyourcar.com/).
+Attentive was written by Kosma Moczek at [Cloud Your Car](https://cloudyourcar.com/).
 
 > Copyright © 2014 Kosma Moczek \<kosma@cloudyourcar.com\>
 > 
