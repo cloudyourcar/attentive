@@ -18,6 +18,7 @@ test: tests
 
 clean:
 	$(RM) tests example *.o
+	$(RM) -r *.dSYM/
 
 tests: tests.o at_parser.o
 example: example.o attentive.o
