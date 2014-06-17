@@ -27,7 +27,7 @@
 
 ## License
 
-Minmea was written by Kosma Moczek \<kosma@cloudyourcar.com\> at [Cloud Your Car](https://cloudyourcar.com/).
+Minmea was written by Kosma Moczek at [Cloud Your Car](https://cloudyourcar.com/).
 
 > Copyright © 2014 Kosma Moczek \<kosma@cloudyourcar.com\>
 > 
