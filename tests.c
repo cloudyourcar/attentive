@@ -33,26 +33,26 @@ void assert_line_expected(const void *line, size_t len, GQueue *q)
 void handle_response(const void *line, size_t len, void *priv)
 {
     (void) priv;
-    printf("response: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
+    //printf("response: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
     assert_line_expected(line, len, &expected_responses);
 }
 
 void handle_urc(const void *line, size_t len, void *priv)
 {
     (void) priv;
-    printf("urc: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
+    //printf("urc: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
     assert_line_expected(line, len, &expected_urcs);
 }
 
 void expect_response(const char *line)
 {
-    printf("expecting response: '%s'\n", line);
+    //printf("expecting response: '%s'\n", line);
     g_queue_push_tail(&expected_responses, (gpointer) line);
 }
 
 void expect_urc(const char *line)
 {
-    printf("expecting urc: '%s'\n", line);
+    //printf("expecting urc: '%s'\n", line);
     g_queue_push_tail(&expected_urcs, (gpointer) line);
 }
 

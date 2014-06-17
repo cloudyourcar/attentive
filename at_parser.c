@@ -157,7 +157,6 @@ static void parser_handle_line(struct at_parser *parser)
     size_t len = parser->buf_used - parser->buf_current;
 
     /* Log the received line. */
-    printf("[%.*s] (%d)\n", (int) parser->buf_used, parser->buf, (int) parser->buf_used);
     printf("< '%.*s'\n", (int) len, line);
 
     /* Determine response type. */
@@ -211,7 +210,6 @@ static void parser_handle_line(struct at_parser *parser)
             /* Switch parser state to rawdata mode. */
             parser->data_left = (int)type >> 8;
             parser->state = STATE_RAWDATA;
-            printf("rawdata follows (%d bytes)\n", (int) parser->data_left);
         }
         break;
 
