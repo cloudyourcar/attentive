@@ -115,6 +115,31 @@ static void parser_append(struct at_parser *parser, char ch)
         parser->buf[parser->buf_used++] = ch;
 }
 
+static void parser_include_line(struct at_parser *parser)
+{
+    /* Append a newline. */
+    parser_append(parser, '\n');
+
+    /* Advance the current command pointer to the new position. */
+    parser->buf_current = parser->buf_used;
+}
+
+static void parser_discard_line(struct at_parser *parser)
+{
+    /* Rewind the end pointer back to the previous position. */
+    parser->buf_used = parser->buf_current;
+}
+
+static void parser_finalize(struct at_parser *parser)
+{
+    /* Remove the last newline, if any. */
+    if (parser->buf_used > 0)
+        parser->buf_used--;
+
+    /* NULL-terminate the response. */
+    parser->buf[parser->buf_used] = '\0';
+}
+
 /**
  * Helper, called whenever a full response line is collected.
  */
@@ -152,12 +177,8 @@ static void parser_handle_line(struct at_parser *parser)
                                 parser->buf_used - parser->buf_current,
                                 parser->priv);
 
-        /* Discard the newline before the URC (if any). */
-        if (parser->buf_current > 0)
-            parser->buf_current--;
-
         /* Discard the URC line from the buffer. */
-        parser->buf_used = parser->buf_current;
+        parser_discard_line(parser);
 
         return;
     }
@@ -165,15 +186,10 @@ static void parser_handle_line(struct at_parser *parser)
     /* Accumulate everything that's not a final OK. */
     if (type != AT_RESPONSE_FINAL_OK) {
         /* Include the line in the buffer. */
-        parser->buf_current = parser->buf_used;
+        parser_include_line(parser);
     } else {
-        /* Discard the newline before the OK (if any). */
-        if (parser->buf_current > 0)
-            parser->buf_current--;
-
         /* Discard the line from the buffer. */
-        parser->buf_used = parser->buf_current;
-        parser->buf[parser->buf_used] = '\0';
+        parser_discard_line(parser);
     }
 
     /* Act on the response type. */
@@ -182,6 +198,7 @@ static void parser_handle_line(struct at_parser *parser)
         case AT_RESPONSE_FINAL:
         {
             /* Fire the response callback. */
+            parser_finalize(parser);
             parser->cbs->handle_response(parser->buf, parser->buf_used, parser->priv);
 
             /* Go back to idle state. */
@@ -231,13 +248,6 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
             case STATE_DATAPROMPT:
             {
                 if ((ch != '\r') && (ch != '\n')) {
-                    /* Add a newline if there's some preceding content. */
-                    if (parser->buf_used > 0 && parser->buf_current == parser->buf_used)
-                    {
-                        parser_append(parser, '\n');
-                        parser->buf_current = parser->buf_used;
-                    }
-
                     /* Append the character if it's not a newline. */
                     parser_append(parser, ch);
                 }
@@ -260,8 +270,7 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
                 }
 
                 if (parser->data_left == 0) {
-                    parser_append(parser, '\n');
-                    parser->buf_current = parser->buf_used;
+                    parser_include_line(parser);
                     parser->state = STATE_READLINE;
                 }
             } break;
