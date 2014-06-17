@@ -72,7 +72,10 @@ START_TEST(test_parser_alloc)
 {
     printf(":: test_parser_alloc\n");
 
-    struct at_parser_callbacks cbs = {0};
+    struct at_parser_callbacks cbs = {
+        .handle_response = handle_response,
+        .handle_urc = handle_urc,
+    };
     struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
     ck_assert(parser != NULL);
     at_parser_free(parser);
