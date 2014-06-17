@@ -221,14 +221,15 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
 
     while (len > 0)
     {
+        /* Fetch next character. */
+        uint8_t ch = *buf++; len--;
+
         switch (parser->state)
         {
             case STATE_IDLE:
             case STATE_READLINE:
             case STATE_DATAPROMPT:
             {
-                uint8_t ch = *buf++; len--;
-
                 if ((ch != '\r') && (ch != '\n')) {
                     /* Add a newline if there's some preceding content. */
                     if (parser->buf_used > 0 && parser->buf_current == parser->buf_used)
@@ -253,8 +254,6 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
             break;
 
             case STATE_RAWDATA: {
-                uint8_t ch = *buf++;
-
                 if (parser->data_left > 0) {
                     parser_append(parser, ch);
                     parser->data_left--;
@@ -269,8 +268,6 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
 
             case STATE_HEXDATA: {
 #if 0
-                uint8_t ch = *buf++;
-
                 if (parser->data_left > 0) {
                     // TODO
                 }
