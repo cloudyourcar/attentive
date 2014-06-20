@@ -114,7 +114,7 @@ const char *at_command_raw(struct at *at, const void *data, size_t size);
  * Count macro arguments. Source:
  * http://stackoverflow.com/questions/2124339/c-preprocessor-va-args-number-of-arguments
  */
-#define NUMARGS(...) (sizeof((void *[]){0, ##__VA_ARGS__})/sizeof(void *)-1)
+#define _NUMARGS(...) (sizeof((void *[]){0, ##__VA_ARGS__})/sizeof(void *)-1)
 
 /**
  * Scanf a response and return -1 if it fails.
@@ -123,7 +123,7 @@ const char *at_command_raw(struct at *at, const void *data, size_t size);
     do {                                                                    \
         if (!_response)                                                     \
             return -1; /* timeout */                                        \
-        if (sscanf(_response, format, __VA_ARGS__) != NUMARGS(__VA_ARGS__)) { \
+        if (sscanf(_response, format, __VA_ARGS__) != _NUMARGS(__VA_ARGS__)) { \
             errno = EINVAL;                                                 \
             return -1;                                                      \
         }                                                                   \
