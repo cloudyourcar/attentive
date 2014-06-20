@@ -20,12 +20,9 @@ clean:
 	$(RM) tests example *.o
 	$(RM) -r *.dSYM/
 
-include/attentive/at.h: include/attentive/parser.h
-include/attentive/cellular.h: include/attentive/at.h
-
 src/parser.o: src/parser.c include/attentive/parser.h
-src/modem/sim800.o: src/modem/sim800.c include/attentive/cellular.h
-src/modem/telit2.o: src/modem/telit2.c include/attentive/cellular.h
+src/modem/sim800.o: src/modem/sim800.c include/attentive/cellular.h include/attentive/at.h include/attentive/parser.h
+src/modem/telit2.o: src/modem/telit2.c include/attentive/cellular.h include/attentive/at.h include/attentive/parser.h
 src/tests.o: src/tests.c include/attentive/parser.h
 
 src/tests: src/tests.o src/parser.o
