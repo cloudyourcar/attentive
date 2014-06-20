@@ -97,11 +97,11 @@ START_TEST(test_parser_response)
     expect_prepare();
 
     expect_response("ERROR");
-    at_parser_await_response(parser, false, NULL);
+    at_parser_await_response(parser);
     at_parser_feed(parser, STR_LEN("ERROR\r\n"));
     expect_nothing();
 
-    at_parser_await_response(parser, false, NULL);
+    at_parser_await_response(parser);
     at_parser_feed(parser, STR_LEN("\r\n\r\n\r\n\r\n\r\n"));
     expect_nothing();
     expect_response("ERROR");
@@ -109,17 +109,17 @@ START_TEST(test_parser_response)
     expect_nothing();
 
     expect_response("");
-    at_parser_await_response(parser, false, NULL);
+    at_parser_await_response(parser);
     at_parser_feed(parser, STR_LEN("OK\r\n"));
     expect_nothing();
 
     expect_response("123456789");
-    at_parser_await_response(parser, false, NULL);
+    at_parser_await_response(parser);
     at_parser_feed(parser, STR_LEN("123456789\r\nOK\r\n"));
     expect_nothing();
 
     expect_response("123456789\nERROR");
-    at_parser_await_response(parser, false, NULL);
+    at_parser_await_response(parser);
     at_parser_feed(parser, STR_LEN("123456789\r\nERROR\r\n"));
     expect_nothing();
 
@@ -173,8 +173,37 @@ START_TEST(test_parser_mixed)
     expect_urc("RING");
     expect_urc("RING");
     expect_urc("RING");
-    at_parser_await_response(parser, false, NULL);
+    at_parser_await_response(parser);
     at_parser_feed(parser, STR_LEN("\r\n12345\r\nRING\r\n67890\r\nRING\r\nOK\r\n\r\nRING\r\n"));
+    expect_nothing();
+
+    at_parser_free(parser);
+}
+END_TEST
+
+START_TEST(test_parser_overflow)
+{
+    printf(":: test_parser_overflow\n");
+
+    struct at_parser_callbacks cbs = {
+        .handle_response = handle_response,
+        .handle_urc = handle_urc,
+    };
+    struct at_parser *parser = at_parser_alloc(&cbs, 8, NULL);
+    ck_assert(parser != NULL);
+
+    expect_prepare();
+
+    /* this one fits... */
+    expect_response("1234");
+    at_parser_await_response(parser);
+    at_parser_feed(parser, STR_LEN("1234\r\nOK\r\n"));
+    expect_nothing();
+
+    /* this one doesn't. */
+    /* TODO: We could be better behaved when it comes to overflows. Not crashing is enough for now. */
+    at_parser_await_response(parser);
+    at_parser_feed(parser, STR_LEN("12345\r\nOK\r\n"));
     expect_nothing();
 
     at_parser_free(parser);
@@ -192,35 +221,6 @@ static enum at_response_type line_scanner(const void *line, size_t len, void *pr
 
     return AT_RESPONSE_UNKNOWN;
 }
-
-START_TEST(test_parser_overflow)
-{
-    printf(":: test_parser_overflow\n");
-
-    struct at_parser_callbacks cbs = {
-        .handle_response = handle_response,
-        .handle_urc = handle_urc,
-    };
-    struct at_parser *parser = at_parser_alloc(&cbs, 8, NULL);
-    ck_assert(parser != NULL);
-
-    expect_prepare();
-
-    /* this one fits... */
-    expect_response("1234");
-    at_parser_await_response(parser, false, NULL);
-    at_parser_feed(parser, STR_LEN("1234\r\nOK\r\n"));
-    expect_nothing();
-
-    /* this one doesn't. */
-    /* TODO: We could be better behaved when it comes to overflows. Not crashing is enough for now. */
-    at_parser_await_response(parser, false, NULL);
-    at_parser_feed(parser, STR_LEN("12345\r\nOK\r\n"));
-    expect_nothing();
-
-    at_parser_free(parser);
-}
-END_TEST
 
 START_TEST(test_parser_rawdata)
 {
@@ -241,7 +241,7 @@ START_TEST(test_parser_rawdata)
     expect_urc("RING");
     expect_urc("RING");
     expect_urc("RING");
-    at_parser_await_response(parser, false, NULL);
+    at_parser_await_response(parser);
     at_parser_feed(parser, STR_LEN("\r\nRING\r\n+RAWDATA: 10\r\nabcd\x01\xFFxyzp\r\nRING\r\nOK\r\nRING\r\n"));
     expect_nothing();
 

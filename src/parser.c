@@ -14,9 +14,10 @@ enum at_parser_state {
 struct at_parser {
     const struct at_parser_callbacks *cbs;
     void *priv;
-    line_scanner_t per_command_scanner;
 
     enum at_parser_state state;
+    bool expect_dataprompt;
+    line_scanner_t per_command_scanner;
     size_t data_left;
     int nibble;
 
@@ -80,10 +81,19 @@ void at_parser_reset(struct at_parser *parser)
     parser->data_left = 0;
 }
 
-void at_parser_await_response(struct at_parser *parser, bool dataprompt, line_scanner_t scanner)
+void at_parser_expect_dataprompt(struct at_parser *parser)
+{
+    parser->expect_dataprompt = true;
+}
+
+void at_parser_set_response_scanner(struct at_parser *parser, line_scanner_t scanner)
 {
     parser->per_command_scanner = scanner;
-    parser->state = (dataprompt ? STATE_DATAPROMPT : STATE_READLINE);
+}
+
+void at_parser_await_response(struct at_parser *parser)
+{
+    parser->state = (parser->expect_dataprompt ? STATE_DATAPROMPT : STATE_READLINE);
 }
 
 bool at_prefix_in_table(const char *line, const char *table[])

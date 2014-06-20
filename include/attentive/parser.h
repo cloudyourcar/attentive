@@ -62,14 +62,34 @@ struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t 
 void at_parser_reset(struct at_parser *parser);
 
 /**
+ * Make the parser expect a dataprompt for the next command.
+ *
+ * Some AT commands, mostly those used for transmitting raw data, return a "> "
+ * prompt (without a newline). The parser must be told explicitly to expect it
+ * on a per-command basis.
+ *
+ * @param parser Parser instance.
+ */
+void at_parser_expect_dataprompt(struct at_parser *parser);
+
+/**
+ * Set per-command response scanner for the next command.
+ *
+ * Should return AT_RESPONSE_UNKNOWN to fall back to the built-in one.
+ * See enum at_response_type for details.
+ *
+ * @param parser Parser instance.
+ * @param scanner Per-command response scanner.
+ */
+void at_parser_set_response_scanner(struct at_parser *parser, line_scanner_t scanner);
+
+/**
  * Inform the parser that a command will be invoked. Causes a response callback
  * at the next command completion.
  *
  * @param parser Parser instance.
- * @param dataprompt If true, treat "> " as an OK response.
- * @param scanner Custom line scanner callback for the current command.
  */
-void at_parser_await_response(struct at_parser *parser, bool dataprompt, line_scanner_t scanner);
+void at_parser_await_response(struct at_parser *parser);
 
 /**
  * Feed parser. Callbacks are always called from this function's context.

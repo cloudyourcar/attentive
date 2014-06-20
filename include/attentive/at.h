@@ -44,34 +44,12 @@ int at_close(struct at *at);
 void at_free(struct at *at);
 
 /**
- * Make the parser expect a dataprompt for the next command.
- *
- * Some AT commands, mostly those used for transmitting raw data, return a "> "
- * prompt (without a newline). The parser must be told explicitly to expect it
- * on a per-command basis.
- *
- * @param at AT channel instance.
- */
-void at_command_expect_dataprompt(struct at *at);
-
-/**
- * Set per-command response scanner for the next command.
- *
- * Should return AT_RESPONSE_UNKNOWN to fall back to the built-in one.
- * See enum at_response_type for details.
- *
- * @param at AT channel instance.
- * @param scanner Per-command response scanner.
- */
-void at_command_set_response_parser(struct at *at, line_scanner_t scanner);
-
-/**
  * Set command timeout in seconds.
  *
  * @param at AT channel instance.
  * @param timeout Timeout in seconds.
  */
-void at_command_set_timeout(struct at *at, int timeout);
+void at_set_timeout(struct at *at, int timeout);
 
 /**
  * Send an AT command and receive a response. Accepts printf-compatible
