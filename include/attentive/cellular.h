@@ -18,10 +18,13 @@
 #define CELLULAR_MEID_LENGTH 14
 #define CELLULAR_ICCID_LENGTH 19
 
-struct cellular_network_stats {
-    int creg;
-    int rssi;
-    int ber;
+enum {
+    CREG_NOT_REGISTERED = 0,
+    CREG_REGISTERED_HOME = 1,
+    CREG_SEARCHING = 2,
+    CREG_REGISTRATION_DENIED = 3,
+    CREG_UNKNOWN = 4,
+    CREG_REGISTERED_ROAMING = 5,
 };
 
 struct cellular_ops {
@@ -37,13 +40,19 @@ struct cellular_ops {
     /** Read SIM serial number (ICCID). */
     int (*iccid)(struct cellular *modem, char *iccid);
 
+    /** Get network registration status. */
+    int (*creg)(struct cellular *modem);
+
+    struct cellular_clock_ops *clock;
+    struct cellular_socket_ops *socket;
+    struct cellular_ftp_ops *ftp;
+};
+
+struct cellular_clock_ops {
     /** Read RTC date and time. Compatible with clock_gettime(). */
     int (*gettime)(struct cellular *modem, struct timespec *ts);
     /** Set RTC date and time. Compatible with clock_settime(). */
     int (*settime)(struct cellular *modem, const struct timespec *ts);
-
-    struct cellular_socket_ops *socket;
-    struct cellular_ftp_ops *ftp;
 };
 
 struct cellular_socket_ops {
