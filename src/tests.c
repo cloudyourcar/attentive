@@ -14,7 +14,8 @@
 #include <check.h>
 #include <glib.h>
 
-#include "at_parser.h"
+#include <attentive/parser.h>
+
 
 #define STR_LEN(s) s, strlen(s)
 

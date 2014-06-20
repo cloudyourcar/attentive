@@ -96,6 +96,39 @@ const char *at_command(struct at *at, const char *format, ...);
  */
 const char *at_command_raw(struct at *at, const void *data, size_t size);
 
+/**
+ * Send an AT command and return -1 if it doesn't return OK.
+ */
+#define at_command_simple(at, cmd...)                                       \
+    do {                                                                    \
+        const char *_response = at_command(at, cmd);                        \
+        if (!_response)                                                     \
+            return -1; /* timeout */                                        \
+        if (strcmp(_response, "")) {                                        \
+            errno = EINVAL;                                                 \
+            return -1;                                                      \
+        }                                                                   \
+    } while (0)
+
+/**
+ * Count macro arguments. Source:
+ * http://stackoverflow.com/questions/2124339/c-preprocessor-va-args-number-of-arguments
+ */
+#define NUMARGS(...) (sizeof((void *[]){0, ##__VA_ARGS__})/sizeof(void *)-1)
+
+/**
+ * Scanf a response and return -1 if it fails.
+ */
+#define at_simple_scanf(_response, format, ...)                             \
+    do {                                                                    \
+        if (!_response)                                                     \
+            return -1; /* timeout */                                        \
+        if (sscanf(_response, format, __VA_ARGS__) != NUMARGS(__VA_ARGS__)) { \
+            errno = EINVAL;                                                 \
+            return -1;                                                      \
+        }                                                                   \
+    } while (0)
+
 #endif
 
 /* vim: set ts=4 sw=4 et: */

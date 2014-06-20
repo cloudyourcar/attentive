@@ -4,7 +4,7 @@
 # the terms of the Do What The Fuck You Want To Public License, Version 2, as
 # published by Sam Hocevar. See the COPYING file for more details.
 
-CFLAGS = -std=c99 -O2 -g -Wall -Wextra -Werror $(shell pkg-config --cflags $(LIBRARIES))
+CFLAGS = $(shell pkg-config --cflags $(LIBRARIES)) -std=c99 -O2 -g -Wall -Wextra -Werror -Iinclude
 LDLIBS = $(shell pkg-config --libs $(LIBRARIES))
 
 LIBRARIES = check glib-2.0
@@ -12,18 +12,23 @@ LIBRARIES = check glib-2.0
 all: test example
 	@echo "+++ All good."""
 
-test: tests
+test: src/tests
 	@echo "+++ Running Check test suite..."
-	./tests
+	src/tests
 
 clean:
 	$(RM) tests example *.o
 	$(RM) -r *.dSYM/
 
-tests: tests.o at_parser.o
-example: example.o attentive.o
-tests.o: tests.c at_parser.h
-attentive.o: attentive.c attentive.h
-at_parser.o: at_parser.c at_parser.h
+include/attentive/at.h: include/attentive/parser.h
+include/attentive/cellular.h: include/attentive/at.h
+
+src/parser.o: src/parser.c include/attentive/parser.h
+src/modem/sim800.o: src/modem/sim800.c include/attentive/cellular.h
+src/modem/telit2.o: src/modem/telit2.c include/attentive/cellular.h
+src/tests.o: src/tests.c include/attentive/parser.h
+
+src/tests: src/tests.o src/parser.o
+src/example: src/example.o src/parser.o src/sim800.o
 
 .PHONY: all test clean
