@@ -11,12 +11,12 @@
 
 #include <attentive/parser.h>
 
+/*
+ * Publicly accessible fields. Platform-specific implementations may add private
+ * fields at the end of this struct.
+ */
 struct at {
     struct at_parser *parser;
-};
-
-struct at_port {
-    const struct at_port_operations *ops;
 };
 
 /**
