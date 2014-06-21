@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -40,6 +41,11 @@ struct at_unix {
 
 void *at_reader_thread(void *arg);
 
+static void handle_sigusr1(int signal)
+{
+    (void)signal;
+}
+
 struct at *at_alloc_unix(struct at_parser *parser, const char *devpath, speed_t baudrate)
 {
     /* allocate instance */
@@ -54,6 +60,12 @@ struct at *at_alloc_unix(struct at_parser *parser, const char *devpath, speed_t 
     priv->common.parser = parser;
     priv->devpath = devpath;
     priv->baudrate = baudrate;
+
+    /* install empty SIGUSR1 handler */
+    struct sigaction sa = {
+        .sa_handler = handle_sigusr1,
+    };
+    sigaction(SIGUSR1, &sa, NULL);
 
     /* initialize and start reader thread */
     priv->running = true;
