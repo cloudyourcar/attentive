@@ -11,14 +11,25 @@
 
 #include <attentive/parser.h>
 
+struct at {
+    struct at_parser *parser;
+};
+
+struct at_port {
+    const struct at_port_operations *ops;
+};
+
 /**
  * Create an AT channel instance.
  *
- * @param dev AT modem device.
+ * NOTE: In most cases, you should be using the platform-specific at_alloc_*()
+ *       function instead.
+ *
+ * @param port AT port instance.
+ * @param parser AT parser instance.
  * @returns Instance pointer on success, NULL and sets errno on failure.
  */
-//struct at *at_alloc(struct at_port *port, struct at_device *dev);
-struct at *at_alloc(void);
+struct at *at_alloc(struct at_parser *parser);
 
 /**
  * Open the AT channel.

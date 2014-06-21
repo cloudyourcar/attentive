@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "attentive.h"
+#include <attentive/at.h>
 
 /* Standard UNIX serial port. */
 

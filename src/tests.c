@@ -34,7 +34,7 @@ void assert_line_expected(const void *line, size_t len, GQueue *q)
 void handle_response(const void *line, size_t len, void *priv)
 {
     (void) priv;
-    //printf("response: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
+    printf("response: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
     assert_line_expected(line, len, &expected_responses);
 }
 
@@ -249,6 +249,36 @@ START_TEST(test_parser_rawdata)
 }
 END_TEST
 
+START_TEST(test_parser_dataprompt)
+{
+    printf(":: test_parser_dataprompt\n");
+
+    struct at_parser_callbacks cbs = {
+        .handle_response = handle_response,
+        .handle_urc = handle_urc,
+    };
+    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    ck_assert(parser != NULL);
+
+    expect_prepare();
+
+    /* Prompt is an OK when we expect it... */
+    at_parser_expect_dataprompt(parser);
+    at_parser_await_response(parser);
+    expect_response("");
+    at_parser_feed(parser, STR_LEN("\r\n> "));
+    expect_nothing();
+
+    /* ...but a normal response otherwise. */
+    at_parser_await_response(parser);
+    expect_response("> ");
+    at_parser_feed(parser, STR_LEN("\r\n> \r\nOK\r\n"));
+    expect_nothing();
+
+    at_parser_free(parser);
+}
+END_TEST
+
 Suite *attentive_suite(void)
 {
     Suite *s = suite_create("attentive");
@@ -261,6 +291,7 @@ Suite *attentive_suite(void)
     tcase_add_test(tc, test_parser_mixed);
     tcase_add_test(tc, test_parser_overflow);
     tcase_add_test(tc, test_parser_rawdata);
+    tcase_add_test(tc, test_parser_dataprompt);
     suite_add_tcase(s, tc);
 
     return s;

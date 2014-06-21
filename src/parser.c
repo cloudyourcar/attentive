@@ -27,13 +27,13 @@ struct at_parser {
     size_t buf_current;
 };
 
-static const char *ok_responses[] = {
+static const char *final_ok_responses[] = {
     "OK",
-    "> ",
     NULL
 };
 
-static const char *error_responses[] = {
+static const char *final_responses[] = {
+    "OK",
     "ERROR",
     "NO CARRIER",
     "+CME ERROR:",
@@ -75,6 +75,7 @@ struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t 
 void at_parser_reset(struct at_parser *parser)
 {
     parser->state = STATE_IDLE;
+    parser->expect_dataprompt = false;
     parser->per_command_scanner = NULL;
     parser->buf_used = 0;
     parser->buf_current = 0;
@@ -111,10 +112,10 @@ static enum at_response_type generic_line_scanner(const char *line, size_t len)
 
     if (at_prefix_in_table(line, urc_responses))
         return AT_RESPONSE_URC;
-    else if (at_prefix_in_table(line, error_responses))
-        return AT_RESPONSE_FINAL;
-    else if (at_prefix_in_table(line, ok_responses))
+    else if (at_prefix_in_table(line, final_ok_responses))
         return AT_RESPONSE_FINAL_OK;
+    else if (at_prefix_in_table(line, final_responses))
+        return AT_RESPONSE_FINAL;
     else
         return AT_RESPONSE_INTERMEDIATE;
 }
