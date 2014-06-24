@@ -33,10 +33,10 @@ struct at_unix {
     pthread_cond_t cond;    /**< For signalling open/busy release. */
 
     int fd;                 /**< Serial port file descriptor. */
-    bool running;           /**< Reader thread should be running. */
-    bool open;              /**< FD is valid. Set/cleared by open()/close(). */
-    bool busy;              /**< FD is in use. Set/cleared by reader thread. */
-    bool waiting;           /**< Waiting for response callback to arrive. */
+    bool running : 1;       /**< Reader thread should be running. */
+    bool open : 1;          /**< FD is valid. Set/cleared by open()/close(). */
+    bool busy : 1;          /**< FD is in use. Set/cleared by reader thread. */
+    bool waiting : 1;       /**< Waiting for response callback to arrive. */
 };
 
 void *at_reader_thread(void *arg);
