@@ -5,6 +5,4 @@
 *.diff
 .*.swp
 .*.swo
-tests
-example
 html/
