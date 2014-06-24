@@ -13,7 +13,14 @@
 
 #include <attentive/at.h>
 
-struct at *at_alloc_unix(struct at_parser *parser, const char *devpath, speed_t baudrate);
+/**
+ * Create an AT channel instance.
+ *
+ * @param devpath Device path.
+ * @param baudrate If non-zero, sets device baudrate (see termios.h).
+ * @returns Instance pointer on success, NULL and sets errno on failure.
+ */
+struct at *at_alloc_unix(const char *devpath, speed_t baudrate);
 
 #endif
 

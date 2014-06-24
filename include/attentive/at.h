@@ -22,14 +22,12 @@ struct at {
 /**
  * Create an AT channel instance.
  *
- * NOTE: In most cases, you should be using the platform-specific at_alloc_*()
- *       function instead.
+ * NOTE: This is a generic interface; you should include a platform-specific
+ *       <at-platform.h> file and call at_alloc_platform() variant instead.
  *
- * @param port AT port instance.
- * @param parser AT parser instance.
  * @returns Instance pointer on success, NULL and sets errno on failure.
  */
-struct at *at_alloc(struct at_parser *parser);
+struct at *at_alloc(void);
 
 /**
  * Open the AT channel.

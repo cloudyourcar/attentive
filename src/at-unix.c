@@ -20,7 +20,7 @@
 #define AT_COMMAND_LENGTH 80
 
 struct at_unix {
-    struct at common;
+    struct at at;
 
     const char *devpath;    /**< Serial port device path. */
     speed_t baudrate;       /**< Serial port baudate. */
@@ -46,7 +46,7 @@ static void handle_sigusr1(int signal)
     (void)signal;
 }
 
-struct at *at_alloc_unix(struct at_parser *parser, const char *devpath, speed_t baudrate)
+struct at *at_alloc_unix(const char *devpath, speed_t baudrate)
 {
     /* allocate instance */
     struct at_unix *priv = malloc(sizeof(struct at_unix));
@@ -56,8 +56,14 @@ struct at *at_alloc_unix(struct at_parser *parser, const char *devpath, speed_t 
     }
     memset(priv, 0, sizeof(struct at_unix));
 
+    /* allocate underlying parser */
+    priv->at.parser = at_parser_alloc(NULL, 256, (void *) priv);
+    if (!priv->at.parser) {
+        free(priv);
+        return NULL;
+    }
+
     /* copy over device parameters */
-    priv->common.parser = parser;
     priv->devpath = devpath;
     priv->baudrate = baudrate;
 
@@ -135,6 +141,7 @@ void at_free(struct at *at)
     pthread_mutex_destroy(&priv->mutex);
 
     /* free up resources */
+    free(priv->at.parser);
     free(priv);
 }
 
@@ -168,8 +175,8 @@ static const char *_at_command(struct at_unix *priv, const void *data, size_t si
     }
 
     /* Prepare parser. */
-    at_parser_reset(priv->common.parser);
-    at_parser_await_response(priv->common.parser);
+    at_parser_reset(priv->at.parser);
+    at_parser_await_response(priv->at.parser);
 
     /* Send the command. */
     // FIXME: handle interrupts, short writes, errors, etc.
@@ -203,7 +210,7 @@ static const char *_at_command(struct at_unix *priv, const void *data, size_t si
         result = NULL;
     } else if (priv->waiting) {
         /* Timed out waiting for a response. */
-        at_parser_reset(priv->common.parser);
+        at_parser_reset(priv->at.parser);
         errno = ETIMEDOUT;
         result = NULL;
     } else {
@@ -288,7 +295,7 @@ void *at_reader_thread(void *arg)
         if (result == 1) {
             /* Data received, feed the parser. */
             pthread_mutex_lock(&priv->mutex);
-            at_parser_feed(priv->common.parser, &ch, 1);
+            at_parser_feed(priv->at.parser, &ch, 1);
             pthread_mutex_unlock(&priv->mutex);
         } else if (result == -1) {
             printf("at_reader_thread[%s]: %s\n", priv->devpath, strerror(errno));
