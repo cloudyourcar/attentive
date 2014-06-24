@@ -35,12 +35,16 @@ enum at_response_type {
 
 /** Line scanner. Should return one of the AT_RESPONSE_* values if the line is
  *  identified or AT_RESPONSE_UNKNOWN to fall back to the default scanner. */
-typedef enum at_response_type (*line_scanner_t)(const void *line, size_t len, void *priv);
+typedef enum at_response_type (*at_line_scanner_t)(const void *line, size_t len, void *priv);
+
+/** Response handler. */
+typedef void (*at_response_handler_t)(const void *line, size_t len, void *priv);
 
 struct at_parser_callbacks {
-    line_scanner_t scan_line;
-    void (*handle_response)(const void *line, size_t len, void *priv);
-    void (*handle_urc)(const void *line, size_t len, void *priv);
+    at_line_scanner_t scan_line;
+    at_response_handler_t handle_response;
+    at_response_handler_t handle_urc;
+    void *priv;
 };
 
 /**
@@ -49,10 +53,9 @@ struct at_parser_callbacks {
  * @param cbs Parser callbacks. Structure is not copied; must persist for
  *            the lifetime of the parser.
  * @param bufsize Response buffer size on bytes.
- * @param priv Private argument; passed to callbacks.
  * @returns Parser instance pointer.
  */
-struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t bufsize, void *priv);
+struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t bufsize);
 
 /**
  * Reset parser instance to initial state.
@@ -81,7 +84,7 @@ void at_parser_expect_dataprompt(struct at_parser *parser);
  * @param parser Parser instance.
  * @param scanner Per-command response scanner.
  */
-void at_parser_set_response_scanner(struct at_parser *parser, line_scanner_t scanner);
+void at_parser_set_response_scanner(struct at_parser *parser, at_line_scanner_t scanner);
 
 /**
  * Inform the parser that a command will be invoked. Causes a response callback

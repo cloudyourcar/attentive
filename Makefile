@@ -12,9 +12,9 @@ LIBRARIES = check glib-2.0
 all: test example
 	@echo "+++ All good."""
 
-test: src/tests
-	@echo "+++ Running Check test suite..."
-	src/tests
+test: src/tests-parser
+	@echo "+++ Running parser test suite."
+	src/tests-parser
 
 clean:
 	$(RM) tests example *.o

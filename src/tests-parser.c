@@ -34,7 +34,7 @@ void assert_line_expected(const void *line, size_t len, GQueue *q)
 void handle_response(const void *line, size_t len, void *priv)
 {
     (void) priv;
-    printf("response: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
+    //printf("response: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
     assert_line_expected(line, len, &expected_responses);
 }
 
@@ -77,7 +77,7 @@ START_TEST(test_parser_alloc)
         .handle_response = handle_response,
         .handle_urc = handle_urc,
     };
-    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    struct at_parser *parser = at_parser_alloc(&cbs, 256);
     ck_assert(parser != NULL);
     at_parser_free(parser);
 }
@@ -91,7 +91,7 @@ START_TEST(test_parser_response)
         .handle_response = handle_response,
         .handle_urc = handle_urc,
     };
-    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    struct at_parser *parser = at_parser_alloc(&cbs, 256);
     ck_assert(parser != NULL);
 
     expect_prepare();
@@ -135,7 +135,7 @@ START_TEST(test_parser_urc)
         .handle_response = handle_response,
         .handle_urc = handle_urc,
     };
-    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    struct at_parser *parser = at_parser_alloc(&cbs, 256);
     ck_assert(parser != NULL);
 
     expect_prepare();
@@ -164,7 +164,7 @@ START_TEST(test_parser_mixed)
         .handle_response = handle_response,
         .handle_urc = handle_urc,
     };
-    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    struct at_parser *parser = at_parser_alloc(&cbs, 256);
     ck_assert(parser != NULL);
 
     expect_prepare();
@@ -189,7 +189,7 @@ START_TEST(test_parser_overflow)
         .handle_response = handle_response,
         .handle_urc = handle_urc,
     };
-    struct at_parser *parser = at_parser_alloc(&cbs, 8, NULL);
+    struct at_parser *parser = at_parser_alloc(&cbs, 8);
     ck_assert(parser != NULL);
 
     expect_prepare();
@@ -231,7 +231,7 @@ START_TEST(test_parser_rawdata)
         .handle_urc = handle_urc,
         .scan_line = line_scanner,
     };
-    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    struct at_parser *parser = at_parser_alloc(&cbs, 256);
     ck_assert(parser != NULL);
 
     expect_prepare();
@@ -257,7 +257,7 @@ START_TEST(test_parser_dataprompt)
         .handle_response = handle_response,
         .handle_urc = handle_urc,
     };
-    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    struct at_parser *parser = at_parser_alloc(&cbs, 256);
     ck_assert(parser != NULL);
 
     expect_prepare();

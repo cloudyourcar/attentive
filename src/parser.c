@@ -13,11 +13,10 @@ enum at_parser_state {
 
 struct at_parser {
     const struct at_parser_callbacks *cbs;
-    void *priv;
 
     enum at_parser_state state;
     bool expect_dataprompt;
-    line_scanner_t per_command_scanner;
+    at_line_scanner_t per_command_scanner;
     size_t data_left;
     int nibble;
 
@@ -46,7 +45,7 @@ static const char *urc_responses[] = {
     NULL,
 };
 
-struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t bufsize, void *priv)
+struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t bufsize)
 {
     /* Allocate parser struct. */
     struct at_parser *parser = (struct at_parser *) malloc(sizeof(struct at_parser));
@@ -64,7 +63,6 @@ struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t 
     }
     parser->cbs = cbs;
     parser->buf_size = bufsize;
-    parser->priv = priv;
 
     /* Prepare instance. */
     at_parser_reset(parser);
@@ -87,7 +85,7 @@ void at_parser_expect_dataprompt(struct at_parser *parser)
     parser->expect_dataprompt = true;
 }
 
-void at_parser_set_response_scanner(struct at_parser *parser, line_scanner_t scanner)
+void at_parser_set_response_scanner(struct at_parser *parser, at_line_scanner_t scanner)
 {
     parser->per_command_scanner = scanner;
 }
@@ -173,9 +171,9 @@ static void parser_handle_line(struct at_parser *parser)
     /* Determine response type. */
     enum at_response_type type = AT_RESPONSE_UNKNOWN;
     if (parser->per_command_scanner)
-        type = parser->per_command_scanner(line, len, parser->priv);
+        type = parser->per_command_scanner(line, len, parser->cbs->priv);
     if (!type && parser->cbs->scan_line)
-        type = parser->cbs->scan_line(line, len, parser->priv);
+        type = parser->cbs->scan_line(line, len, parser->cbs->priv);
     if (!type)
         type = generic_line_scanner(line, len);
 
@@ -185,7 +183,7 @@ static void parser_handle_line(struct at_parser *parser)
         /* Fire the callback on the URC line. */
         parser->cbs->handle_urc(parser->buf + parser->buf_current,
                                 parser->buf_used - parser->buf_current,
-                                parser->priv);
+                                parser->cbs->priv);
 
         /* Discard the URC line from the buffer. */
         parser_discard_line(parser);
@@ -209,7 +207,7 @@ static void parser_handle_line(struct at_parser *parser)
         {
             /* Fire the response callback. */
             parser_finalize(parser);
-            parser->cbs->handle_response(parser->buf, parser->buf_used, parser->priv);
+            parser->cbs->handle_response(parser->buf, parser->buf_used, parser->cbs->priv);
 
             /* Go back to idle state. */
             at_parser_reset(parser);
