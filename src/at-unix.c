@@ -73,7 +73,7 @@ enum at_response_type scan_line(const void *line, size_t len, void *arg)
     enum at_response_type type = AT_RESPONSE_UNKNOWN;
     if (at->command_scanner)
         type = at->command_scanner(line, len, at->arg);
-    if (!type && at->cbs->scan_line)
+    if (!type && at->cbs && at->cbs->scan_line)
         type = at->cbs->scan_line(line, len, at->arg);
     return type;
 }
