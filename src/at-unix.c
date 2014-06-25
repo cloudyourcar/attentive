@@ -124,9 +124,13 @@ int at_open(struct at *at)
 {
     struct at_unix *priv = (struct at_unix *) at;
 
+    pthread_mutex_lock(&priv->mutex);
+
     priv->fd = open(priv->devpath, O_RDWR);
-    if (priv->fd == -1)
+    if (priv->fd == -1) {
+        pthread_mutex_unlock(&priv->mutex);
         return -1;
+    }
 
     if (priv->baudrate) {
         struct termios attr;
@@ -134,6 +138,10 @@ int at_open(struct at *at)
         cfsetspeed(&attr, priv->baudrate);
         tcsetattr(priv->fd, TCSANOW, &attr);
     }
+
+    priv->open = true;
+    pthread_cond_signal(&priv->cond);
+    pthread_mutex_unlock(&priv->mutex);
 
     return 0;
 }
