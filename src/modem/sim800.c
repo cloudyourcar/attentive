@@ -113,23 +113,22 @@ static int sim800_op_settime(struct cellular *modem, const struct timespec *ts)
     return 0;
 }
 
-const struct cellular_device_ops sim800_device_ops = {
+static const struct cellular_device_ops sim800_device_ops = {
     .imei = sim800_op_imei,
-    .meid = NULL,
     .iccid = sim800_op_iccid,
 };
 
-const struct cellular_network_ops sim800_network_ops = {
+static const struct cellular_network_ops sim800_network_ops = {
     .creg = sim800_op_creg,
     .rssi = sim800_op_rssi,
 };
 
-const struct cellular_clock_ops sim800_clock_ops = {
+static const struct cellular_clock_ops sim800_clock_ops = {
     .gettime = sim800_op_gettime,
     .settime = sim800_op_settime,
 };
 
-const struct cellular_ops sim800_ops = {
+static const struct cellular_ops sim800_ops = {
     .device = &sim800_device_ops,
     .network = &sim800_network_ops,
     .clock = &sim800_clock_ops,
