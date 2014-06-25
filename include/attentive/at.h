@@ -17,6 +17,14 @@
  */
 struct at {
     struct at_parser *parser;
+    const struct at_callbacks *cbs;
+    void *arg;
+    at_line_scanner_t command_scanner;
+};
+
+struct at_callbacks {
+    at_line_scanner_t scan_line;
+    at_response_handler_t handle_urc;
 };
 
 /**
@@ -53,10 +61,27 @@ int at_close(struct at *at);
 void at_free(struct at *at);
 
 /**
- * Set command timeout in seconds.
+ * Set AT channel callbacks.
  *
  * @param at AT channel instance.
- * @param timeout Timeout in seconds.
+ * @param cbs Set of callbacks. Not copied.
+ * @param arg Private argument passed to callbacks.
+ */
+void at_set_callbacks(struct at *at, const struct at_callbacks *cbs, void *arg);
+
+/**
+ * Set custom per-command line scanner for the next command.
+ *
+ * @param at AT channel instance.
+ * @param scanner Line scanner callback.
+ */
+void at_set_command_scanner(struct at *at, at_line_scanner_t scanner);
+
+/**
+ * Set command timeout.
+ *
+ * @param at AT channel instance.
+ * @param timeout Timeout in seconds (zero to disable).
  */
 void at_set_timeout(struct at *at, int timeout);
 

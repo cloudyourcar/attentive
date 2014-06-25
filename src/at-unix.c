@@ -46,6 +46,44 @@ static void handle_sigusr1(int signal)
     (void)signal;
 }
 
+static void handle_response(const void *buf, size_t len, void *arg)
+{
+    struct at_unix *priv = (struct at_unix *) arg;
+
+    /* The mutex is held by the reader thread; don't reacquire. */
+    priv->response = buf;
+    (void) len;
+    priv->waiting = false;
+    pthread_cond_signal(&priv->cond);
+}
+
+static void handle_urc(const void *buf, size_t len, void *arg)
+{
+    struct at *at = (struct at *) arg;
+
+    /* Forward to caller's URC callback, if any. */
+    if (at->cbs->handle_urc)
+        at->cbs->handle_urc(buf, len, at->arg);
+}
+
+enum at_response_type scan_line(const void *line, size_t len, void *arg)
+{
+    struct at *at = (struct at *) arg;
+
+    enum at_response_type type = AT_RESPONSE_UNKNOWN;
+    if (at->command_scanner)
+        type = at->command_scanner(line, len, at->arg);
+    if (!type && at->cbs->scan_line)
+        type = at->cbs->scan_line(line, len, at->arg);
+    return type;
+}
+
+static const struct at_parser_callbacks parser_callbacks = {
+    .handle_response = handle_response,
+    .handle_urc = handle_urc,
+    .scan_line = scan_line,
+};
+
 struct at *at_alloc_unix(const char *devpath, speed_t baudrate)
 {
     /* allocate instance */
@@ -57,7 +95,7 @@ struct at *at_alloc_unix(const char *devpath, speed_t baudrate)
     memset(priv, 0, sizeof(struct at_unix));
 
     /* allocate underlying parser */
-    priv->at.parser = at_parser_alloc(NULL, 256, (void *) priv);
+    priv->at.parser = at_parser_alloc(&parser_callbacks, 256, (void *) priv);
     if (!priv->at.parser) {
         free(priv);
         return NULL;
@@ -90,7 +128,7 @@ int at_open(struct at *at)
     if (priv->fd == -1)
         return -1;
 
-    if (at->baudrate) {
+    if (priv->baudrate) {
         struct termios attr;
         tcgetattr(priv->fd, &attr);
         cfsetspeed(&attr, priv->baudrate);
@@ -147,22 +185,22 @@ void at_free(struct at *at)
     free(priv);
 }
 
+void at_set_callbacks(struct at *at, const struct at_callbacks *cbs, void *arg)
+{
+    at->cbs = cbs;
+    at->arg = arg;
+}
+
+void at_set_command_scanner(struct at *at, at_line_scanner_t scanner)
+{
+    at->command_scanner = scanner;
+}
+
 void at_set_timeout(struct at *at, int timeout)
 {
     struct at_unix *priv = (struct at_unix *) at;
 
     priv->timeout = timeout;
-}
-
-static void response_callback(const void *buf, size_t len, void *arg)
-{
-    struct at_unix *priv = (struct at_unix *) arg;
-
-    /* The mutex is held by the reader thread; don't reacquire. */
-    priv->response = buf;
-    (void) len;
-    priv->waiting = false;
-    pthread_cond_signal(&priv->cond);
 }
 
 static const char *_at_command(struct at_unix *priv, const void *data, size_t size)
@@ -219,6 +257,9 @@ static const char *_at_command(struct at_unix *priv, const void *data, size_t si
         /* Response arrived. */
         result = priv->response;
     }
+
+    /* Reset per-command settings. */
+    priv->at.command_scanner = NULL;
 
     pthread_mutex_unlock(&priv->mutex);
 
