@@ -7,7 +7,9 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <attentive/at-unix.h>
 #include <attentive/cellular.h>
@@ -27,11 +29,17 @@ int main(int argc, char *argv[])
     at_command(at, "AT+CGMR");
     at_command(at, "AT+CGSN");
 
+    printf("* getting modem time\n");
     struct timespec ts;
-    if (modem->ops->clock && modem->ops->clock->gettime(modem, &ts) == 0) {
-        printf("modem time: %s", ctime(&ts.tv_sec));
+    if (modem->ops->clock->gettime(modem, &ts) == 0) {
+        printf("gettime: %s", ctime(&ts.tv_sec));
     } else {
-        printf("modem time: unknown\n");
+        perror("gettime");
+    }
+
+    printf("* setting modem time\n");
+    if (modem->ops->clock->settime(modem, &ts) != 0) {
+        perror("settime");
     }
 
     char imei[CELLULAR_IMEI_LENGTH+1];
