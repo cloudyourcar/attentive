@@ -241,6 +241,17 @@ static void parser_handle_line(struct at_parser *parser)
     }
 }
 
+static int hex2int(char c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    return -1;
+}
+
 void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
 {
     const uint8_t *buf = data;
@@ -285,16 +296,24 @@ void at_parser_feed(struct at_parser *parser, const void *data, size_t len)
             } break;
 
             case STATE_HEXDATA: {
-#if 0
                 if (parser->data_left > 0) {
-                    // TODO
+                    int value = hex2int(ch);
+                    if (value != -1) {
+                        if (parser->nibble == -1) {
+                            parser->nibble = value;
+                        } else {
+                            value |= (parser->nibble << 4);
+                            parser->nibble = -1;
+                            parser_append(parser, value);
+                            parser->data_left--;
+                        }
+                    }
                 }
 
                 if (parser->data_left == 0) {
-                    parser_append(parser, '\n');
+                    parser_include_line(parser);
                     parser->state = STATE_READLINE;
                 }
-#endif
             } break;
         }
     }

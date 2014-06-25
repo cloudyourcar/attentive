@@ -218,6 +218,8 @@ static enum at_response_type line_scanner(const void *line, size_t len, void *pr
     int bytes;
     if (sscanf(line, "+RAWDATA: %d", &bytes) == 1)
         return AT_RESPONSE_RAWDATA_FOLLOWS(bytes);
+    if (sscanf(line, "+HEXDATA: %d", &bytes) == 1)
+        return AT_RESPONSE_HEXDATA_FOLLOWS(bytes);
 
     return AT_RESPONSE_UNKNOWN;
 }
@@ -243,6 +245,29 @@ START_TEST(test_parser_rawdata)
     expect_urc("RING");
     at_parser_await_response(parser);
     at_parser_feed(parser, STR_LEN("\r\nRING\r\n+RAWDATA: 16\r\nRING\r\nabcd\x01\xFFxyzp\r\nRING\r\nOK\r\nRING\r\n"));
+    expect_nothing();
+
+    at_parser_free(parser);
+}
+END_TEST
+
+START_TEST(test_parser_hexdata)
+{
+    printf(":: test_parser_hexdata\n");
+
+    struct at_parser_callbacks cbs = {
+        .handle_response = handle_response,
+        .handle_urc = handle_urc,
+        .scan_line = line_scanner,
+    };
+    struct at_parser *parser = at_parser_alloc(&cbs, 256, NULL);
+    ck_assert(parser != NULL);
+
+    expect_prepare();
+
+    expect_response("+HEXDATA: 10\nabcd\x01\xffxyzp");
+    at_parser_await_response(parser);
+    at_parser_feed(parser, STR_LEN("\r\n+HEXDATA: 10\r\n61 62 6364 01 ff 78797a70\r\nOK\r\n"));
     expect_nothing();
 
     at_parser_free(parser);
@@ -291,6 +316,7 @@ Suite *attentive_suite(void)
     tcase_add_test(tc, test_parser_mixed);
     tcase_add_test(tc, test_parser_overflow);
     tcase_add_test(tc, test_parser_rawdata);
+    tcase_add_test(tc, test_parser_hexdata);
     tcase_add_test(tc, test_parser_dataprompt);
     suite_add_tcase(s, tc);
 
