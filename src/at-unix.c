@@ -90,10 +90,12 @@ int at_open(struct at *at)
     if (priv->fd == -1)
         return -1;
 
-    struct termios attr;
-    tcgetattr(priv->fd, &attr);
-    cfsetspeed(&attr, priv->baudrate);
-    tcsetattr(priv->fd, TCSANOW, &attr);
+    if (at->baudrate) {
+        struct termios attr;
+        tcgetattr(priv->fd, &attr);
+        cfsetspeed(&attr, priv->baudrate);
+        tcsetattr(priv->fd, TCSANOW, &attr);
+    }
 
     return 0;
 }
