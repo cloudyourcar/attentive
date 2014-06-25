@@ -39,6 +39,28 @@ static int sim800_op_iccid(struct cellular *modem, char *buf, size_t len)
     return 0;
 }
 
+static int sim800_op_creg(struct cellular *modem)
+{
+    int creg;
+
+    at_set_timeout(modem->at, 1);
+    const char *response = at_command(modem->at, "AT+CREG?");
+    at_simple_scanf(response, "+CREG: %*d,%d", &creg);
+
+    return creg;
+}
+
+static int sim800_op_rssi(struct cellular *modem)
+{
+    int rssi;
+
+    at_set_timeout(modem->at, 1);
+    const char *response = at_command(modem->at, "AT+CSQ");
+    at_simple_scanf(response, "+CSQ: %d,%*d", &rssi);
+
+    return rssi;
+}
+
 static int sim800_op_gettime(struct cellular *modem, struct timespec *ts)
 {
     struct tm tm;
@@ -97,6 +119,11 @@ const struct cellular_device_ops sim800_device_ops = {
     .iccid = sim800_op_iccid,
 };
 
+const struct cellular_network_ops sim800_network_ops = {
+    .creg = sim800_op_creg,
+    .rssi = sim800_op_rssi,
+};
+
 const struct cellular_clock_ops sim800_clock_ops = {
     .gettime = sim800_op_gettime,
     .settime = sim800_op_settime,
@@ -104,6 +131,7 @@ const struct cellular_clock_ops sim800_clock_ops = {
 
 const struct cellular_ops sim800_ops = {
     .device = &sim800_device_ops,
+    .network = &sim800_network_ops,
     .clock = &sim800_clock_ops,
 };
 
