@@ -11,8 +11,8 @@ int generic_op_imei(struct cellular *modem, char *buf, size_t len);
 int generic_op_iccid(struct cellular *modem, char *buf, size_t len);
 int generic_op_creg(struct cellular *modem);
 int generic_op_rssi(struct cellular *modem);
-int generic_op_gettime(struct cellular *modem, struct timespec *ts);
-int generic_op_settime(struct cellular *modem, const struct timespec *ts);
+int generic_op_clock_gettime(struct cellular *modem, struct timespec *ts);
+int generic_op_clock_settime(struct cellular *modem, const struct timespec *ts);
 
 #endif
 

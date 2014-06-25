@@ -32,13 +32,13 @@ int main(int argc, char *argv[])
 
     printf("* getting network status\n");
     int creg, rssi;
-    if ((creg = modem->ops->network->creg(modem)) != -1) {
+    if ((creg = modem->ops->creg(modem)) != -1) {
         printf("registration status: %d\n", creg);
     } else {
         perror("creg");
     }
 
-    if ((rssi = modem->ops->network->rssi(modem)) != -1) {
+    if ((rssi = modem->ops->rssi(modem)) != -1) {
         printf("signal strength: %d\n", rssi);
     } else {
         perror("rssi");
@@ -46,19 +46,19 @@ int main(int argc, char *argv[])
 
     printf("* getting modem time\n");
     struct timespec ts;
-    if (modem->ops->clock->gettime(modem, &ts) == 0) {
+    if (modem->ops->clock_gettime(modem, &ts) == 0) {
         printf("gettime: %s", ctime(&ts.tv_sec));
     } else {
         perror("gettime");
     }
 
     printf("* setting modem time\n");
-    if (modem->ops->clock->settime(modem, &ts) != 0) {
+    if (modem->ops->clock_settime(modem, &ts) != 0) {
         perror("settime");
     }
 
     char imei[CELLULAR_IMEI_LENGTH+1];
-    modem->ops->device->imei(modem, imei, sizeof(imei));
+    modem->ops->imei(modem, imei, sizeof(imei));
     printf("imei: %s\n", imei);
 
     assert(cellular_detach(modem) == 0);

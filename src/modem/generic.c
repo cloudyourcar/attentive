@@ -68,7 +68,7 @@ int generic_op_rssi(struct cellular *modem)
     return rssi;
 }
 
-int generic_op_gettime(struct cellular *modem, struct timespec *ts)
+int generic_op_clock_gettime(struct cellular *modem, struct timespec *ts)
 {
     struct tm tm;
 
@@ -101,7 +101,7 @@ int generic_op_gettime(struct cellular *modem, struct timespec *ts)
     return 0;
 }
 
-int generic_op_settime(struct cellular *modem, const struct timespec *ts)
+int generic_op_clock_settime(struct cellular *modem, const struct timespec *ts)
 {
     /* Convert time_t to broken-down UTC time. */
     struct tm tm;
@@ -120,25 +120,13 @@ int generic_op_settime(struct cellular *modem, const struct timespec *ts)
     return 0;
 }
 
-static const struct cellular_device_ops generic_device_ops = {
+static const struct cellular_ops generic_ops = {
     .imei = generic_op_imei,
     .iccid = generic_op_iccid,
-};
-
-static const struct cellular_network_ops generic_network_ops = {
     .creg = generic_op_creg,
     .rssi = generic_op_rssi,
-};
-
-static const struct cellular_clock_ops generic_clock_ops = {
-    .gettime = generic_op_gettime,
-    .settime = generic_op_settime,
-};
-
-static const struct cellular_ops generic_ops = {
-    .device = &generic_device_ops,
-    .network = &generic_network_ops,
-    .clock = &generic_clock_ops,
+    .clock_gettime = generic_op_clock_gettime,
+    .clock_settime = generic_op_clock_settime,
 };
 
 

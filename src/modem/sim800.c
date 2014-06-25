@@ -54,21 +54,6 @@ static const struct at_callbacks sim800_callbacks = {
     .handle_urc = handle_urc,
 };
 
-static const struct cellular_device_ops sim800_device_ops = {
-    .imei = generic_op_imei,
-    .iccid = generic_op_iccid,
-};
-
-static const struct cellular_network_ops sim800_network_ops = {
-    .creg = generic_op_creg,
-    .rssi = generic_op_rssi,
-};
-
-static const struct cellular_clock_ops sim800_clock_ops = {
-    .gettime = generic_op_gettime,
-    .settime = generic_op_settime,
-};
-
 static int sim800_attach(struct cellular *modem)
 {
     at_set_callbacks(modem->at, &sim800_callbacks, (void *) modem);
@@ -85,9 +70,12 @@ static const struct cellular_ops sim800_ops = {
     .attach = sim800_attach,
     .detach = sim800_detach,
 
-    .device = &sim800_device_ops,
-    .network = &sim800_network_ops,
-    .clock = &sim800_clock_ops,
+    .imei = generic_op_imei,
+    .iccid = generic_op_iccid,
+    .creg = generic_op_creg,
+    .rssi = generic_op_rssi,
+    .clock_gettime = generic_op_clock_gettime,
+    .clock_settime = generic_op_clock_settime,
 };
 
 struct cellular *cellular_sim800_alloc(void)

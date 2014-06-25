@@ -40,50 +40,33 @@ struct cellular_ops {
     int (*attach)(struct cellular *modem);
     int (*detach)(struct cellular *modem);
 
-    const struct cellular_device_ops *device;
-    const struct cellular_network_ops *network;
-    const struct cellular_clock_ops *clock;
-    const struct cellular_socket_ops *socket;
-    const struct cellular_ftp_ops *ftp;
-};
-
-struct cellular_device_ops {
     /** Read GSM modem serial number (IMEI). */
     int (*imei)(struct cellular *modem, char *buf, size_t len);
     /** Read CDMA modem serial number (MEID). */
     int (*meid)(struct cellular *modem, char *buf, size_t len);
     /** Read SIM serial number (ICCID). */
     int (*iccid)(struct cellular *modem, char *iccid, size_t len);
-};
 
-struct cellular_network_ops {
     /** Get network registration status. */
     int (*creg)(struct cellular *modem);
     /** Get signal strength. */
     int (*rssi)(struct cellular *modem);
-};
 
-struct cellular_clock_ops {
     /** Read RTC date and time. Compatible with clock_gettime(). */
-    int (*gettime)(struct cellular *modem, struct timespec *ts);
+    int (*clock_gettime)(struct cellular *modem, struct timespec *ts);
     /** Set RTC date and time. Compatible with clock_settime(). */
-    int (*settime)(struct cellular *modem, const struct timespec *ts);
-};
+    int (*clock_settime)(struct cellular *modem, const struct timespec *ts);
 
-struct cellular_socket_ops {
-    int (*connect)(struct cellular *modem, int connid, const char *host, uint16_t port);
-    ssize_t (*send)(struct cellular *modem, int connid, const void *buffer, size_t amount, int flags);
-    ssize_t (*recv)(struct cellular *modem, int connid, void *buffer, size_t length, int flags);
-    int (*shutdown)(struct cellular *modem, int connid, int how);
-    int (*waitack)(struct cellular *modem, int connid, int timeout);
-    int (*close)(struct cellular *modem, int connid);
-};
+    int (*socket_connect)(struct cellular *modem, int connid, const char *host, uint16_t port);
+    ssize_t (*socket_send)(struct cellular *modem, int connid, const void *buffer, size_t amount, int flags);
+    ssize_t (*socket_recv)(struct cellular *modem, int connid, void *buffer, size_t length, int flags);
+    int (*socket_waitack)(struct cellular *modem, int connid, int timeout);
+    int (*socket_close)(struct cellular *modem, int connid);
 
-struct cellular_ftp_ops {
-    int (*open)(struct cellular *modem, const char *username, const char *password, bool passive);
-    int (*get)(struct cellular *modem, const char *filename);
-    int (*getpkt)(struct cellular *modem, void *buffer, size_t length);
-    int (*close)(struct cellular *modem);
+    int (*ftp_open)(struct cellular *modem, const char *username, const char *password, bool passive);
+    int (*ftp_get)(struct cellular *modem, const char *filename);
+    int (*ftp_getpkt)(struct cellular *modem, void *buffer, size_t length);
+    int (*ftp_close)(struct cellular *modem);
 };
 
 
