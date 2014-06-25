@@ -7,7 +7,9 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <attentive/at.h>
 #include <attentive/at-unix.h>
@@ -52,7 +54,7 @@ int main(int argc, char *argv[])
     at_set_timeout(at, 10);
     for (const char **command=commands; *command; command++) {
         const char *result = at_command(at, *command);
-        printf("%s => %s\n", *command, result);
+        printf("%s => %s\n", *command, result ? result : strerror(errno));
     }
 
     printf("freeing resources...\n");
