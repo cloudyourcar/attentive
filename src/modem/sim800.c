@@ -9,7 +9,7 @@ struct cellular_sim800 {
 };
 
 
-int sim800_op_imei(struct cellular *modem, char *buf, size_t len)
+static int sim800_op_imei(struct cellular *modem, char *buf, size_t len)
 {
     char fmt[16];
     if (snprintf(fmt, sizeof(fmt), "%%[0-9]%ds", (int) len) >= (int) sizeof(fmt)) {
@@ -24,7 +24,7 @@ int sim800_op_imei(struct cellular *modem, char *buf, size_t len)
     return 0;
 }
 
-int sim800_op_iccid(struct cellular *modem, char *buf, size_t len)
+static int sim800_op_iccid(struct cellular *modem, char *buf, size_t len)
 {
     char fmt[16];
     if (snprintf(fmt, sizeof(fmt), "%%[0-9]%ds", (int) len) >= (int) sizeof(fmt)) {
@@ -39,7 +39,7 @@ int sim800_op_iccid(struct cellular *modem, char *buf, size_t len)
     return 0;
 }
 
-int sim800_op_gettime(struct cellular *modem, struct timespec *ts)
+static int sim800_op_gettime(struct cellular *modem, struct timespec *ts)
 {
     struct tm tm;
     int offset;
