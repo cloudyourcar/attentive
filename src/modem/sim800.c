@@ -16,7 +16,7 @@ int sim800_op_imei(struct cellular *modem, char *buf, size_t len)
         return -1;
     }
 
-    at_command_set_timeout(modem->at, 1);
+    at_set_timeout(modem->at, 1);
     const char *response = at_command(modem->at, "AT+CGSN");
     at_simple_scanf(response, fmt, buf);
 
@@ -31,7 +31,7 @@ int sim800_op_iccid(struct cellular *modem, char *buf, size_t len)
         return -1;
     }
 
-    at_command_set_timeout(modem->at, 5);
+    at_set_timeout(modem->at, 5);
     const char *response = at_command(modem->at, "AT+CCID");
     at_simple_scanf(response, fmt, buf);
 
