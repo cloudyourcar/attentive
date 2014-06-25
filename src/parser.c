@@ -17,7 +17,6 @@ struct at_parser {
 
     enum at_parser_state state;
     bool expect_dataprompt;
-    at_line_scanner_t per_command_scanner;
     size_t data_left;
     int nibble;
 
@@ -76,7 +75,6 @@ void at_parser_reset(struct at_parser *parser)
 {
     parser->state = STATE_IDLE;
     parser->expect_dataprompt = false;
-    parser->per_command_scanner = NULL;
     parser->buf_used = 0;
     parser->buf_current = 0;
     parser->data_left = 0;
@@ -85,11 +83,6 @@ void at_parser_reset(struct at_parser *parser)
 void at_parser_expect_dataprompt(struct at_parser *parser)
 {
     parser->expect_dataprompt = true;
-}
-
-void at_parser_set_response_scanner(struct at_parser *parser, at_line_scanner_t scanner)
-{
-    parser->per_command_scanner = scanner;
 }
 
 void at_parser_await_response(struct at_parser *parser)
@@ -172,9 +165,7 @@ static void parser_handle_line(struct at_parser *parser)
 
     /* Determine response type. */
     enum at_response_type type = AT_RESPONSE_UNKNOWN;
-    if (parser->per_command_scanner)
-        type = parser->per_command_scanner(line, len, parser->priv);
-    if (!type && parser->cbs->scan_line)
+    if (parser->cbs->scan_line)
         type = parser->cbs->scan_line(line, len, parser->priv);
     if (!type)
         type = generic_line_scanner(line, len);

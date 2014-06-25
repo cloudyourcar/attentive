@@ -76,17 +76,6 @@ void at_parser_reset(struct at_parser *parser);
 void at_parser_expect_dataprompt(struct at_parser *parser);
 
 /**
- * Set per-command response scanner for the next command.
- *
- * Should return AT_RESPONSE_UNKNOWN to fall back to the built-in one.
- * See enum at_response_type for details.
- *
- * @param parser Parser instance.
- * @param scanner Per-command response scanner.
- */
-void at_parser_set_response_scanner(struct at_parser *parser, at_line_scanner_t scanner);
-
-/**
  * Inform the parser that a command will be invoked. Causes a response callback
  * at the next command completion.
  *
