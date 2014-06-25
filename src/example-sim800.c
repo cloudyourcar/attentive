@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 
     struct timespec ts;
     if (modem->ops->clock && modem->ops->clock->gettime(modem, &ts) == 0) {
-        printf("modem time: %s\n", ctime(&ts.tv_sec));
+        printf("modem time: %s", ctime(&ts.tv_sec));
     } else {
         printf("modem time: unknown\n");
     }
@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     modem->ops->device->imei(modem, imei, sizeof(imei));
     printf("imei: %s\n", imei);
 
-   assert(at_close(at) == 0);
+    assert(at_close(at) == 0);
 
     cellular_sim800_free(modem);
     at_free(at);
