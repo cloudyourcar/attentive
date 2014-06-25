@@ -237,12 +237,12 @@ START_TEST(test_parser_rawdata)
     expect_prepare();
 
     /* I'd love to put 0x00 here, but the entire string handling in Check croaks then. */
-    expect_response("+RAWDATA: 10\nabcd\x01\xffxyzp");
+    expect_response("+RAWDATA: 16\nRING\r\nabcd\x01\xffxyzp");
     expect_urc("RING");
     expect_urc("RING");
     expect_urc("RING");
     at_parser_await_response(parser);
-    at_parser_feed(parser, STR_LEN("\r\nRING\r\n+RAWDATA: 10\r\nabcd\x01\xFFxyzp\r\nRING\r\nOK\r\nRING\r\n"));
+    at_parser_feed(parser, STR_LEN("\r\nRING\r\n+RAWDATA: 16\r\nRING\r\nabcd\x01\xFFxyzp\r\nRING\r\nOK\r\nRING\r\n"));
     expect_nothing();
 
     at_parser_free(parser);
