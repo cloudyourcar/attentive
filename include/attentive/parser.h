@@ -44,7 +44,6 @@ struct at_parser_callbacks {
     at_line_scanner_t scan_line;
     at_response_handler_t handle_response;
     at_response_handler_t handle_urc;
-    void *priv;
 };
 
 /**
@@ -53,9 +52,10 @@ struct at_parser_callbacks {
  * @param cbs Parser callbacks. Structure is not copied; must persist for
  *            the lifetime of the parser.
  * @param bufsize Response buffer size on bytes.
+ * @param priv Private argument; passed to callbacks.
  * @returns Parser instance pointer.
  */
-struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t bufsize);
+struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t bufsize, void *priv);
 
 /**
  * Reset parser instance to initial state.
