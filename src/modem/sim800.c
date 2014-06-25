@@ -62,7 +62,6 @@ int sim800_op_gettime(struct cellular *modem, struct timespec *ts)
     /* Adjust values and perform conversion. */
     tm.tm_year += 2000 - 1900;
     tm.tm_mon -= 1;
-    tm.tm_isdst = 0;
     time_t unix_time = timegm(&tm);
     if (unix_time == -1) {
         errno = EINVAL;
