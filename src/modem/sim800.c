@@ -42,15 +42,13 @@ static int sim800_op_iccid(struct cellular *modem, char *buf, size_t len)
 static int sim800_op_gettime(struct cellular *modem, struct timespec *ts)
 {
     struct tm tm;
-    int offset;
 
     at_set_timeout(modem->at, 1);
     const char *response = at_command(modem->at, "AT+CCLK?");
     memset(&tm, 0, sizeof(struct tm));
-    at_simple_scanf(response, "+CCLK: \"%d/%d/%d,%d:%d:%d%d\"",
+    at_simple_scanf(response, "+CCLK: \"%d/%d/%d,%d:%d:%d%*d\"",
             &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
-            &tm.tm_hour, &tm.tm_min, &tm.tm_sec,
-            &offset);
+            &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
 
     /* Most modems report some starting date way in the past when they have
      * no date/time estimation. */
