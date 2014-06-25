@@ -40,9 +40,9 @@ int main(int argc, char *argv[])
     const char *commands[] = {
         "AT",
         "ATE0",
+        "AT+CGMR",
         "AT+CGSN",
         "AT+CCID",
-        "AT+CGN",
         "AT+CMEE=0",
         "AT+BLAH",
         "AT+CMEE=2",
