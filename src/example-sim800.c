@@ -9,8 +9,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include <attentive/parser.h>
-#include <attentive/at.h>
 #include <attentive/at-unix.h>
 #include <attentive/cellular.h>
 
@@ -19,11 +17,10 @@ int main(int argc, char *argv[])
     assert(argc-1 == 1);
     const char *devpath = argv[1];
 
-    struct at_parser *parser = at_parser_alloc(cbs, 256, NULL);
-    struct at *at = at_alloc_unix(parser, devpath, B115200);
+    struct at *at = at_alloc_unix(devpath, B115200);
     struct cellular *modem = cellular_sim800_alloc(at);
 
-    at_open(at);
+    assert(at_open(at) == 0);
 
     at_command(at, "AT");
     at_command(at, "ATE0");
@@ -31,17 +28,20 @@ int main(int argc, char *argv[])
     at_command(at, "AT+CGSN");
 
     struct timespec ts;
-    modem->ops->clock->gettime(modem, &ts);
+    if (modem->ops->clock && modem->ops->clock->gettime(modem, &ts) == 0) {
+        printf("modem time: %s\n", ctime(&ts.tv_sec));
+    } else {
+        printf("modem time: unknown\n");
+    }
 
     char imei[CELLULAR_IMEI_LENGTH+1];
     modem->ops->device->imei(modem, imei, sizeof(imei));
     printf("imei: %s\n", imei);
 
-    at_close(at);
+   assert(at_close(at) == 0);
 
     cellular_sim800_free(modem);
     at_free(at);
-    at_parser_free(parser);
 
     return 0;
 }

@@ -26,9 +26,11 @@ src/modem/sim800.o: src/modem/sim800.c include/attentive/cellular.h include/atte
 src/modem/telit2.o: src/modem/telit2.c include/attentive/cellular.h include/attentive/at.h include/attentive/parser.h
 src/tests-parser.o: src/tests-parser.c include/attentive/parser.h
 src/example-at.o: src/example-at.c include/attentive/at.h include/attentive/parser.h
+src/example-sim800.o: src/example-sim800.c include/attentive/cellular.h include/attentive/at.h include/attentive/parser.h
 
 src/tests-parser: src/tests-parser.o src/parser.o
 
 src/example-at: src/example-at.o src/parser.o src/at-unix.o
+src/example-sim800: src/example-sim800.o src/modem/sim800.o src/at-unix.o src/parser.o
 
 .PHONY: all test clean
