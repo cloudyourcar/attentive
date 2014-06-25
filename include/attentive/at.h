@@ -78,6 +78,13 @@ void at_set_callbacks(struct at *at, const struct at_callbacks *cbs, void *arg);
 void at_set_command_scanner(struct at *at, at_line_scanner_t scanner);
 
 /**
+ * Expect "> " dataprompt as a response for the next command.
+ *
+ * @param at AT channel instance.
+ */
+void at_expect_dataprompt(struct at *at);
+
+/**
  * Set command timeout.
  *
  * @param at AT channel instance.
@@ -115,6 +122,20 @@ const char *at_command_raw(struct at *at, const void *data, size_t size);
 #define at_command_simple(at, cmd...)                                       \
     do {                                                                    \
         const char *_response = at_command(at, cmd);                        \
+        if (!_response)                                                     \
+            return -1; /* timeout */                                        \
+        if (strcmp(_response, "")) {                                        \
+            errno = EINVAL;                                                 \
+            return -1;                                                      \
+        }                                                                   \
+    } while (0)
+
+/**
+ * Send raw data and return -1 if it doesn't return OK.
+ */
+#define at_command_raw_simple(at, cmd...)                                   \
+    do {                                                                    \
+        const char *_response = at_command_raw(at, cmd);                    \
         if (!_response)                                                     \
             return -1; /* timeout */                                        \
         if (strcmp(_response, "")) {                                        \

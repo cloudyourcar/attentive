@@ -219,6 +219,11 @@ void at_set_timeout(struct at *at, int timeout)
     priv->timeout = timeout;
 }
 
+void at_expect_dataprompt(struct at *at)
+{
+    at_parser_expect_dataprompt(at->parser);
+}
+
 static const char *_at_command(struct at_unix *priv, const void *data, size_t size)
 {
     pthread_mutex_lock(&priv->mutex);
