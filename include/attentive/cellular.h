@@ -6,8 +6,8 @@
  * published by Sam Hocevar. See the COPYING file for more details.
  */
 
-#ifndef CELLULAR_H
-#define CELLULAR_H
+#ifndef ATTENTIVE_CELLULAR_H
+#define ATTENTIVE_CELLULAR_H
 
 #include <stdbool.h>
 #include <stdint.h>
