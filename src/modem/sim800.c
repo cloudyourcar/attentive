@@ -40,17 +40,16 @@ static const struct cellular_ops sim800_ops = {
     .clock = &sim800_clock_ops,
 };
 
-
-struct cellular *cellular_sim800_alloc(struct at *at)
+struct cellular *cellular_sim800_alloc(void)
 {
     struct cellular_sim800 *modem = malloc(sizeof(struct cellular_sim800));
     if (modem == NULL) {
         errno = ENOMEM;
         return NULL;
     }
+    memset(modem, 0, sizeof(*modem));
 
     modem->dev.ops = &sim800_ops;
-    modem->dev.at = at;
 
     return (struct cellular *) modem;
 }

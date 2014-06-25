@@ -37,10 +37,8 @@ struct cellular {
 };
 
 struct cellular_ops {
-    /** Claim exclusive access. */
-    int (*claim)(struct cellular *modem);
-    /** Release exclusive access. */
-    int (*release)(struct cellular *modem);
+    int (*attach)(struct cellular *modem);
+    int (*detach)(struct cellular *modem);
 
     const struct cellular_device_ops *device;
     const struct cellular_network_ops *network;
@@ -92,10 +90,26 @@ struct cellular_ftp_ops {
 /**
  * Allocate a cellular modem instance.
  *
- * @param at Previously allocated AT channel.
  * @returns Instance pointer on success, NULL and sets errno on failure.
  */
-struct cellular *cellular_alloc(struct at *at);
+struct cellular *cellular_alloc(void);
+
+/**
+ * Attach cellular modem instance to an AT channel.
+ * Performs initialization, attaches callbacks, etc.
+ *
+ * @param modem Cellular modem instance.
+ * @param at AT channel instance.
+ * @returns Zero on success, -1 and sets errno on failure.
+ */
+int cellular_attach(struct cellular *modem, struct at *at);
+
+/**
+ * Detach cellular modem instance.
+ * @param modem Cellular modem instance.
+ * @returns Zero on success, -1 and sets errno on failure.
+ */
+int cellular_detach(struct cellular *modem);
 
 /**
  * Free a cellular modem instance.
@@ -107,10 +121,13 @@ void cellular_free(struct cellular *modem);
 
 /* Modem-specific variants below. */
 
-struct cellular *cellular_telit2_alloc(struct at *at);
+struct cellular *cellular_generic_alloc(void);
+void cellular_generic_free(struct cellular *modem);
+
+struct cellular *cellular_telit2_alloc(void);
 void cellular_telit2_free(struct cellular *modem);
 
-struct cellular *cellular_sim800_alloc(struct at *at);
+struct cellular *cellular_sim800_alloc(void);
 void cellular_sim800_free(struct cellular *modem);
 
 #endif

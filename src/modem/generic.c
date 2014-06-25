@@ -142,7 +142,7 @@ static const struct cellular_ops generic_ops = {
 };
 
 
-struct cellular *cellular_generic_alloc(struct at *at)
+struct cellular *cellular_generic_alloc(void)
 {
     struct cellular_generic *modem = malloc(sizeof(struct cellular_generic));
     if (modem == NULL) {
@@ -151,7 +151,6 @@ struct cellular *cellular_generic_alloc(struct at *at)
     }
 
     modem->dev.ops = &generic_ops;
-    modem->dev.at = at;
 
     return (struct cellular *) modem;
 }
