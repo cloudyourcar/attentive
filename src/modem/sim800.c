@@ -10,8 +10,18 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "generic.h"
+
+enum sim800_socket_status {
+    SIM800_SOCKET_STATUS_ERROR = -1,
+    SIM800_SOCKET_STATUS_UNKNOWN = 0,
+    SIM800_SOCKET_STATUS_CONNECTED = 1,
+};
+
+#define SIM800_NSOCKETS                 6
+#define SIM800_CONNECT_TIMEOUT          60
 
 static const char *sim800_urc_responses[] = {
     "+CIPRXGET: 1,",    /* incoming socket data notification */
@@ -25,6 +35,7 @@ struct cellular_sim800 {
     struct cellular dev;
 
     int ftpget1_status;
+    enum sim800_socket_status socket_status[SIM800_NSOCKETS];
 };
 
 static enum at_response_type scan_line(const void *line, size_t len, void *arg)
@@ -80,6 +91,62 @@ static int sim800_detach(struct cellular *modem)
     return 0;
 }
 
+static int sim800_socket_connect(struct cellular *modem, int connid, const char *host, uint16_t port)
+{
+    struct cellular_sim800 *priv = (struct cellular_sim800 *) modem;
+
+    /* TODO: Missing PDP support. */
+
+    /* Send connection request. */
+    at_set_timeout(modem->at, 150);
+    priv->socket_status[connid] = SIM800_SOCKET_STATUS_UNKNOWN;
+    at_command_simple(modem->at, "AT+CIPSTART=%d,TCP,\"%s\",%d", connid, host, port);
+
+    /* Wait for socket status URC. */
+    for (int i=0; i<SIM800_CONNECT_TIMEOUT; i++) {
+        if (priv->socket_status[connid] == SIM800_SOCKET_STATUS_CONNECTED) {
+            return 0;
+        } else if (priv->socket_status[connid] == SIM800_SOCKET_STATUS_ERROR) {
+            errno = ECONNABORTED;
+            return -1;
+        }
+        sleep(1);
+    }
+
+    errno = ETIMEDOUT;
+    return -1;
+}
+
+static enum at_response_type scanner_cipsend(const void *line, size_t len, void *arg)
+{
+    (void) arg;
+
+    int connid, amount;
+    if (sscanf(line, "DATA ACCEPT:%d,%d", &connid, &amount) == 2)
+        return AT_RESPONSE_FINAL_OK;
+    if (!strncmp(line, "SEND OK", len))
+        return AT_RESPONSE_FINAL_OK;
+    if (!strncmp(line, "SEND FAIL", len))
+        return AT_RESPONSE_FINAL;
+    return AT_RESPONSE_UNKNOWN;
+}
+
+static ssize_t sim800_socket_send(struct cellular *modem, int connid, const void *buffer, size_t amount, int flags)
+{
+    (void) flags;
+
+    /* Request transmission. */
+    at_set_timeout(modem->at, 150);
+    at_expect_dataprompt(modem->at);
+    at_command_simple(modem->at, "AT+CIPSEND=%d,%zu", connid, amount);
+
+    /* Send raw data. */
+    at_set_command_scanner(modem->at, scanner_cipsend);
+    at_command_raw_simple(modem->at, buffer, amount);
+
+    return amount;
+}
+
 static const struct cellular_ops sim800_ops = {
     .attach = sim800_attach,
     .detach = sim800_detach,
@@ -90,6 +157,8 @@ static const struct cellular_ops sim800_ops = {
     .rssi = generic_op_rssi,
     .clock_gettime = generic_op_clock_gettime,
     .clock_settime = generic_op_clock_settime,
+    .socket_connect = sim800_socket_connect,
+    .socket_send = sim800_socket_send,
 };
 
 struct cellular *cellular_sim800_alloc(void)
