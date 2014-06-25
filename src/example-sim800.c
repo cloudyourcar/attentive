@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     /* network stuff. */
     int socket = 2;
 
-    if (modem->ops->socket_connect(modem, socket, "kosma.pl", 80) == 0) {
+    if (modem->ops->socket_connect(modem, socket, "google.pl", 80) == 0) {
         printf("connect successful\n");
     } else {
         perror("connect");
@@ -69,6 +69,12 @@ int main(int argc, char *argv[])
         printf("send successful\n");
     } else {
         perror("send");
+    }
+
+    if (modem->ops->socket_close(modem, socket) == 0) {
+        printf("close successful\n");
+    } else {
+        perror("close");
     }
 
     assert(cellular_detach(modem) == 0);
