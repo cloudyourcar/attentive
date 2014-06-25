@@ -88,6 +88,25 @@ struct cellular_ftp_ops {
     int (*close)(struct cellular *modem);
 };
 
+
+/**
+ * Allocate a cellular modem instance.
+ *
+ * @param at Previously allocated AT channel.
+ * @returns Instance pointer on success, NULL and sets errno on failure.
+ */
+struct cellular *cellular_alloc(struct at *at);
+
+/**
+ * Free a cellular modem instance.
+ *
+ * @param Modem instance allocated with cellular_alloc().
+ */
+void cellular_free(struct cellular *modem);
+
+
+/* Modem-specific variants below. */
+
 struct cellular *cellular_telit2_alloc(struct at *at);
 void cellular_telit2_free(struct cellular *modem);
 
