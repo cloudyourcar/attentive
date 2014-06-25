@@ -72,6 +72,25 @@ static int sim800_op_gettime(struct cellular *modem, struct timespec *ts)
     return 0;
 }
 
+static int sim800_op_settime(struct cellular *modem, const struct timespec *ts)
+{
+    /* Convert time_t to broken-down UTC time. */
+    struct tm tm;
+    gmtime_r(&ts->tv_sec, &tm);
+
+    /* Adjust values to match 3GPP TS 27.007. */
+    tm.tm_year += 1900 - 2000;
+    tm.tm_mon += 1;
+
+    /* Set the time. */
+    at_set_timeout(modem->at, 1);
+    at_command_simple(modem->at, "AT+CCLK=\"%02d/%02d/%02d,%02d:%02d:%02d+00\"",
+            tm.tm_year, tm.tm_mon, tm.tm_mday,
+            tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    return 0;
+}
+
 const struct cellular_device_ops sim800_device_ops = {
     .imei = sim800_op_imei,
     .meid = NULL,
@@ -80,6 +99,7 @@ const struct cellular_device_ops sim800_device_ops = {
 
 const struct cellular_clock_ops sim800_clock_ops = {
     .gettime = sim800_op_gettime,
+    .settime = sim800_op_settime,
 };
 
 const struct cellular_ops sim800_ops = {
