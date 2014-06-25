@@ -11,18 +11,14 @@
 int cellular_attach(struct cellular *modem, struct at *at)
 {
     modem->at = at;
-    if (modem->ops->attach)
-        return modem->ops->attach(modem);
-    else
-        return 0;
+    return modem->ops->attach ? modem->ops->attach(modem) : 0;
 }
 
 int cellular_detach(struct cellular *modem)
 {
-    if (modem->ops->detach)
-        return modem->ops->detach(modem);
-    else
-        return 0;
+    int result = modem->ops->detach? modem->ops->detach(modem) : 0;
+    modem->at = NULL;
+    return result;
 }
 
 /* vim: set ts=4 sw=4 et: */
