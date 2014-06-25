@@ -12,24 +12,12 @@
 #include <attentive/at.h>
 #include <attentive/at-unix.h>
 
-static enum at_response_type generic_modem_parse_response(struct at_device *dev, const void *line, size_t len)
+static void generic_modem_handle_urc(const void *line, size_t len, void *arg)
 {
-    (void) dev;
-    (void) line;
-    (void) len;
-
-    return AT_RESPONSE_UNKNOWN;
+    printf("[%p] URC: %.*s\n", arg, (int) len, (char *) line);
 }
 
-static void generic_modem_handle_urc(struct at_device *dev, const void *line, size_t len)
-{
-    (void) len;
-
-    printf("[%p] URC: %.*s\n", dev, (int) len, (char *) line);
-}
-
-static const struct at_device_operations generic_modem_ops = {
-    .parse_response = generic_modem_parse_response,
+static const struct at_callbacks generic_modem_callbacks = {
     .handle_urc = generic_modem_handle_urc,
 };
 
@@ -38,15 +26,14 @@ int main(int argc, char *argv[])
     assert(argc-1 == 1);
     const char *devpath = argv[1];
 
-    printf("allocating parser...\n");
-    struct at_parser *parser = at_parser_alloc(cbs, 256, NULL);
-
     printf("allocating channel...\n");
-    struct at *at = at_alloc_unix(parser, devpath, B115200);
-    assert(at_open(at) == 0);
+    struct at *at = at_alloc_unix(devpath, B115200);
 
     printf("opening port...\n");
-    at_open(at);
+    assert(at_open(at) == 0);
+
+    printf("attaching callbacks\n");
+    at_set_callbacks(at, &generic_modem_callbacks, NULL);
 
     const char *commands[] = {
         "AT",
@@ -62,6 +49,7 @@ int main(int argc, char *argv[])
     };
 
     printf("sending commands...\n");
+    at_set_timeout(at, 10);
     for (const char **command=commands; *command; command++) {
         const char *result = at_command(at, *command);
         printf("%s => %s\n", *command, result);
@@ -69,7 +57,6 @@ int main(int argc, char *argv[])
 
     printf("freeing resources...\n");
     at_free(at);
-    at_parser_free(parser);
 
     return 0;
 }
