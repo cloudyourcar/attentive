@@ -147,6 +147,27 @@ static ssize_t sim800_socket_send(struct cellular *modem, int connid, const void
     return amount;
 }
 
+static enum at_response_type scanner_cipclose(const void *line, size_t len, void *arg)
+{
+    (void) len;
+    (void) arg;
+
+    int connid;
+    char last;
+    if (sscanf(line, "%d, CLOSE O%c", &connid, &last) == 2 && last == 'K')
+        return AT_RESPONSE_FINAL_OK;
+    return AT_RESPONSE_UNKNOWN;
+}
+
+int sim800_socket_close(struct cellular *modem, int connid)
+{
+    at_set_timeout(modem->at, 150);
+    at_set_command_scanner(modem->at, scanner_cipclose);
+    at_command_simple(modem->at, "AT+CIPCLOSE=%d", connid);
+
+    return 0;
+}
+
 static const struct cellular_ops sim800_ops = {
     .attach = sim800_attach,
     .detach = sim800_detach,
@@ -159,6 +180,7 @@ static const struct cellular_ops sim800_ops = {
     .clock_settime = generic_op_clock_settime,
     .socket_connect = sim800_socket_connect,
     .socket_send = sim800_socket_send,
+    .socket_close = sim800_socket_close,
 };
 
 struct cellular *cellular_sim800_alloc(void)
