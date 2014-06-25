@@ -43,6 +43,7 @@ struct cellular_ops {
     int (*release)(struct cellular *modem);
 
     const struct cellular_device_ops *device;
+    const struct cellular_network_ops *network;
     const struct cellular_clock_ops *clock;
     const struct cellular_socket_ops *socket;
     const struct cellular_ftp_ops *ftp;
