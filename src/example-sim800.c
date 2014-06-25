@@ -20,9 +20,10 @@ int main(int argc, char *argv[])
     const char *devpath = argv[1];
 
     struct at *at = at_alloc_unix(devpath, B115200);
-    struct cellular *modem = cellular_sim800_alloc(at);
+    struct cellular *modem = cellular_sim800_alloc();
 
     assert(at_open(at) == 0);
+    assert(cellular_attach(modem, at) == 0);
 
     at_command(at, "AT");
     at_command(at, "ATE0");
@@ -60,6 +61,7 @@ int main(int argc, char *argv[])
     modem->ops->device->imei(modem, imei, sizeof(imei));
     printf("imei: %s\n", imei);
 
+    assert(cellular_detach(modem) == 0);
     assert(at_close(at) == 0);
 
     cellular_sim800_free(modem);
