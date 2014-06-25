@@ -56,6 +56,21 @@ int main(int argc, char *argv[])
     modem->ops->imei(modem, imei, sizeof(imei));
     printf("imei: %s\n", imei);
 
+    /* network stuff. */
+    int socket = 2;
+
+    if (modem->ops->socket_connect(modem, socket, "kosma.pl", 80) == 0) {
+        printf("connect successful\n");
+    } else {
+        perror("connect");
+    }
+
+    if (modem->ops->socket_send(modem, socket, "GET / HTTP/1.0", 14, 0) == 14) {
+        printf("send successful\n");
+    } else {
+        perror("send");
+    }
+
     assert(cellular_detach(modem) == 0);
     assert(at_close(at) == 0);
 
