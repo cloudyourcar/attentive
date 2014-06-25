@@ -29,6 +29,20 @@ int main(int argc, char *argv[])
     at_command(at, "AT+CGMR");
     at_command(at, "AT+CGSN");
 
+    printf("* getting network status\n");
+    int creg, rssi;
+    if ((creg = modem->ops->network->creg(modem)) != -1) {
+        printf("registration status: %d\n", creg);
+    } else {
+        perror("creg");
+    }
+
+    if ((rssi = modem->ops->network->rssi(modem)) != -1) {
+        printf("signal strength: %d\n", rssi);
+    } else {
+        perror("rssi");
+    }
+
     printf("* getting modem time\n");
     struct timespec ts;
     if (modem->ops->clock->gettime(modem, &ts) == 0) {
