@@ -95,6 +95,7 @@ void at_set_timeout(struct at *at, int timeout);
  *          if a timeout occurs. Response is newline-delimited and does
  *          not include the final "OK".
  */
+__attribute__ ((format (printf, 2, 3)))
 const char *at_command(struct at *at, const char *format, ...);
 
 /**
