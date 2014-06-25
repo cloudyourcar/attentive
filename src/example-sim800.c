@@ -25,11 +25,6 @@ int main(int argc, char *argv[])
     assert(at_open(at) == 0);
     assert(cellular_attach(modem, at) == 0);
 
-    at_command(at, "AT");
-    at_command(at, "ATE0");
-    at_command(at, "AT+CGMR");
-    at_command(at, "AT+CGSN");
-
     printf("* getting network status\n");
     int creg, rssi;
     if ((creg = modem->ops->creg(modem)) != -1) {

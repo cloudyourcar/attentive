@@ -57,6 +57,20 @@ static const struct at_callbacks sim800_callbacks = {
 static int sim800_attach(struct cellular *modem)
 {
     at_set_callbacks(modem->at, &sim800_callbacks, (void *) modem);
+
+    at_set_timeout(modem->at, 1);
+    at_command(modem->at, "AT");        /* Aid autobauding. Always a good idea. */
+    at_command(modem->at, "ATE0");      /* Disable local echo. */
+
+    /* Initialize modem. */
+    static const char *init_strings[] = {
+        "AT+IFC=0,0",                   /* Disable hardware flow control. */
+        "AT+CMEE=2",                    /* Enable extended error reporting. */
+        NULL
+    };
+    for (const char **command=init_strings; *command; command++)
+        at_command_simple(modem->at, "%s", *command);
+
     return 0;
 }
 
