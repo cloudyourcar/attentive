@@ -38,12 +38,12 @@ static const char *final_responses[] = {
     "NO CARRIER",
     "+CME ERROR:",
     "+CMS ERROR:",
-    NULL,
+    NULL
 };
 
 static const char *urc_responses[] = {
     "RING",
-    NULL,
+    NULL
 };
 
 struct at_parser *at_parser_alloc(const struct at_parser_callbacks *cbs, size_t bufsize, void *priv)
