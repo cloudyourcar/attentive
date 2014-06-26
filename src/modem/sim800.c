@@ -14,6 +14,20 @@
 
 #include "generic.h"
 
+/*
+ * SIM800 probably holds the highly esteemed position of the world's worst
+ * behaving GSM modem, ever. The following quirks have been spotted so far:
+ * - response continues after OK (AT+CIPSTATUS)
+ * - response without a final OK (AT+CIFSR)
+ * - freeform URCs coming at random moments like "DST: 1" (AT+CLTS=1)
+ * - text-only URCs like "NORMAL POWER DOWN"
+ * - suffix-based URCs like "1, CONNECT OK" (AT+CIPSTART)
+ * - bizarre OK responses like "SHUT OK" (AT+CIPSHUT)
+ * - responses without a final OK (sic!) (AT+CIFSR)
+ * - no response at all (AT&K0)
+ * We work it all around, but it makes the code unnecessarily complex.
+ */
+
 enum sim800_socket_status {
     SIM800_SOCKET_STATUS_ERROR = -1,
     SIM800_SOCKET_STATUS_UNKNOWN = 0,
