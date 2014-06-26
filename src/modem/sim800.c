@@ -20,6 +20,7 @@
  * - response continues after OK (AT+CIPSTATUS)
  * - response without a final OK (AT+CIFSR)
  * - freeform URCs coming at random moments like "DST: 1" (AT+CLTS=1)
+ * - undocumented URCs like "+CIEV: ..." (AT+CLTS=1)
  * - text-only URCs like "NORMAL POWER DOWN"
  * - suffix-based URCs like "1, CONNECT OK" (AT+CIPSTART)
  * - bizarre OK responses like "SHUT OK" (AT+CIPSHUT)
@@ -43,6 +44,11 @@ static const char *sim800_urc_responses[] = {
     "+FTPGET: 1,",      /* FTP state change notification */
     "+PDP: DEACT",      /* PDP disconnected */
     "+SAPBR 1: DEACT",  /* PDP disconnected (for SAPBR apps) */
+    "*PSNWID: ",        /* AT+CLTS network name */
+    "*PSUTTZ: ",        /* AT+CLTS time */
+    "+CTZV: ",          /* AT+CLTS timezone */
+    "DST: ",            /* AT+CLTS dst information */
+    "+CIEV: ",          /* AT+CLTS undocumented indicator */
     NULL
 };
 
@@ -93,6 +99,8 @@ static int sim800_attach(struct cellular *modem)
     static const char *init_strings[] = {
         "AT+IFC=0,0",                   /* Disable hardware flow control. */
         "AT+CMEE=2",                    /* Enable extended error reporting. */
+        "AT+CLTS=1",                    /* Sync RTC with network time. */
+        "AT&W0",                        /* Save configuration. */
         NULL
     };
     for (const char **command=init_strings; *command; command++)
