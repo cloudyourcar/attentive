@@ -36,6 +36,7 @@ enum sim800_socket_status {
 
 #define SIM800_NSOCKETS                 6
 #define SIM800_CONNECT_TIMEOUT          60
+#define SIM800_CIPCFG_RETRIES           10
 
 static const char *sim800_urc_responses[] = {
     "+CIPRXGET: 1,",    /* incoming socket data notification */
@@ -79,6 +80,7 @@ static const struct at_callbacks sim800_callbacks = {
     .handle_urc = handle_urc,
 };
 
+
 static int sim800_attach(struct cellular *modem)
 {
     at_set_callbacks(modem->at, &sim800_callbacks, (void *) modem);
@@ -104,6 +106,149 @@ static int sim800_detach(struct cellular *modem)
     at_set_callbacks(modem->at, NULL, NULL);
     return 0;
 }
+
+
+/**
+ * SIM800 IP configuration commands fail if the IP application is running,
+ * even though the configuration settings are already right. The following
+ * monkey dance is therefore needed.
+ */
+static int sim800_config(struct cellular *modem, const char *option, const char *value, int attempts)
+{
+    at_set_timeout(modem->at, 10);
+
+	for (int i=0; i<attempts; i++) {
+        /* Blindly try to set the configuration option. */
+		at_command(modem->at, "AT+%s=%s", option, value);
+
+        /* Query the setting status. */
+		const char *response = at_command(modem->at, "AT+%s?", option);
+        /* Bail out on timeouts. */
+        if (response == NULL)
+            return -1;
+
+        /* Check if the setting has the correct value. */
+        char expected[16];
+        if (snprintf(expected, sizeof(expected), "+%s: %s", option, value) >= (int) sizeof(expected)) {
+            errno = ENOBUFS;
+            return -1;
+        }
+		if (!strcmp(response, expected))
+			return 0;
+
+        sleep(1);
+	}
+
+    errno = ETIMEDOUT;
+    return -1;
+}
+
+static enum at_response_type scanner_cipstatus(const void *line, size_t len, void *arg)
+{
+    (void) len;
+    (void) arg;
+
+    /* There are response lines after OK. Keep reading. */
+    if (!strcmp(line, "OK"))
+        return AT_RESPONSE_INTERMEDIATE;
+    /* Collect the entire post-OK response until the last C: line. */
+    if (!strncmp(line, "C: 5", 4))
+        return AT_RESPONSE_FINAL;
+    return AT_RESPONSE_UNKNOWN;
+}
+
+/**
+ * Retrieve AT+CIPSTATUS state.
+ *
+ * @returns 1 if context is open, 0 if context is closed, -1 on errors.
+ */
+static int sim800_ipstatus(struct cellular *modem)
+{
+    at_set_timeout(modem->at, 10);
+    at_set_command_scanner(modem->at, scanner_cipstatus);
+    const char *response = at_command(modem->at, "AT+CIPSTATUS");
+
+    const char *state = strstr(response, "STATE: ");
+    if (!state) {
+        errno = EPROTO;
+        return -1;
+    }
+    state += strlen("STATE: ");
+    if (!strncmp(state, "IP STATUS", strlen("IP STATUS")))
+        return 1;
+    if (!strncmp(state, "IP PROCESSING", strlen("IP PROCESSING")))
+        return 1;
+
+    return 0;
+}
+
+static enum at_response_type scanner_cifsr(const void *line, size_t len, void *arg)
+{
+    (void) len;
+    (void) arg;
+
+    /* Accept an IP address as an OK response. */
+    int ip[4];
+    if (sscanf(line, "%d.%d.%d.%d", &ip[0], &ip[1], &ip[2], &ip[3]) == 4)
+        return AT_RESPONSE_FINAL_OK;
+    return AT_RESPONSE_UNKNOWN;
+}
+
+static int sim800_pdp_open(struct cellular *modem, const char *apn)
+{
+    /* Do nothing if the context is already open. */
+    if (sim800_ipstatus(modem) == 1)
+        return 0;
+
+    /* Switch to multiple connections mode; it's less buggy. */
+    if (sim800_config(modem, "CIPMUX", "1", SIM800_CIPCFG_RETRIES) != 0)
+        return -1;
+    /* Receive data manually. */
+    if (sim800_config(modem, "CIPRXGET", "1", SIM800_CIPCFG_RETRIES) != 0)
+        return -1;
+    /* Enable quick send mode. */
+    if (sim800_config(modem, "CIPQSEND", "1", SIM800_CIPCFG_RETRIES) != 0)
+        return -1;
+
+    at_set_timeout(modem->at, 150);
+
+    /* Configure context for FTP/HTTP applications. */
+    at_command_simple(modem->at, "AT+SAPBR=3,1,APN,\"%s\"", apn);
+
+    /* Commands below don't check the response. This is intentional; instead
+     * of trying to stay in sync with the GPRS state machine we blindly issue
+     * the command sequence needed to transition through all the states and
+     * reach IP STATUS. See SIM800 Series_TCPIP_Application Note_V1.01.pdf for
+     * the GPRS states documentation. */
+
+    /* Configure context for TCP/IP applications. */
+    at_command(modem->at, "AT+CSTT=\"%s\"", apn);
+    /* Establish context. */
+    at_command(modem->at, "AT+CIICR");
+    /* Read local IP address. Switches modem to IP STATUS state. */
+    at_set_command_scanner(modem->at, scanner_cifsr);
+    at_command(modem->at, "AT+CIFSR");
+
+    return sim800_ipstatus(modem);
+}
+
+
+static enum at_response_type scanner_cipshut(const void *line, size_t len, void *arg)
+{
+    (void) arg;
+    if (!strncmp(line, "SHUT OK", len))
+        return AT_RESPONSE_FINAL_OK;
+    return AT_RESPONSE_UNKNOWN;
+}
+
+static int sim800_pdp_close(struct cellular *modem)
+{
+    at_set_command_scanner(modem->at, scanner_cipshut);
+    at_command_simple(modem->at, "AT+CIPSHUT");
+
+    return 0;
+}
+
 
 static int sim800_socket_connect(struct cellular *modem, int connid, const char *host, uint16_t port)
 {
@@ -185,6 +330,9 @@ int sim800_socket_close(struct cellular *modem, int connid)
 static const struct cellular_ops sim800_ops = {
     .attach = sim800_attach,
     .detach = sim800_detach,
+
+    .pdp_open = sim800_pdp_open,
+    .pdp_close = sim800_pdp_close,
 
     .imei = generic_op_imei,
     .iccid = generic_op_iccid,
