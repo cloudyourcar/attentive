@@ -176,6 +176,9 @@ static int sim800_ipstatus(struct cellular *modem)
     at_set_command_scanner(modem->at, scanner_cipstatus);
     const char *response = at_command(modem->at, "AT+CIPSTATUS");
 
+    if (response == NULL)
+        return -1;
+
     const char *state = strstr(response, "STATE: ");
     if (!state) {
         errno = EPROTO;
