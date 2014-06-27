@@ -207,10 +207,6 @@ static enum at_response_type scanner_cifsr(const void *line, size_t len, void *a
 
 static int sim800_pdp_open(struct cellular *modem, const char *apn)
 {
-    /* Do nothing if the context is already open. */
-    if (sim800_ipstatus(modem) == 1)
-        return 0;
-
     /* Switch to multiple connections mode; it's less buggy. */
     if (sim800_config(modem, "CIPMUX", "1", SIM800_CIPCFG_RETRIES) != 0)
         return -1;
@@ -220,6 +216,10 @@ static int sim800_pdp_open(struct cellular *modem, const char *apn)
     /* Enable quick send mode. */
     if (sim800_config(modem, "CIPQSEND", "1", SIM800_CIPCFG_RETRIES) != 0)
         return -1;
+
+    /* Do nothing if the context is already open. */
+    if (sim800_ipstatus(modem) == 1)
+        return 0;
 
     at_set_timeout(modem->at, 150);
 
