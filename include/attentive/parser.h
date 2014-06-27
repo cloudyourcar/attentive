@@ -43,10 +43,10 @@ enum at_response_type {
 
 /** Line scanner. Should return one of the AT_RESPONSE_* values if the line is
  *  identified or AT_RESPONSE_UNKNOWN to fall back to the default scanner. */
-typedef enum at_response_type (*at_line_scanner_t)(const void *line, size_t len, void *priv);
+typedef enum at_response_type (*at_line_scanner_t)(const char *line, size_t len, void *priv);
 
 /** Response handler. */
-typedef void (*at_response_handler_t)(const void *line, size_t len, void *priv);
+typedef void (*at_response_handler_t)(const char *line, size_t len, void *priv);
 
 struct at_parser_callbacks {
     at_line_scanner_t scan_line;

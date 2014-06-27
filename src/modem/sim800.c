@@ -59,7 +59,7 @@ struct cellular_sim800 {
     enum sim800_socket_status socket_status[SIM800_NSOCKETS];
 };
 
-static enum at_response_type scan_line(const void *line, size_t len, void *arg)
+static enum at_response_type scan_line(const char *line, size_t len, void *arg)
 {
     (void) len; /* FIXME: we could do better */
     (void) arg;
@@ -70,7 +70,7 @@ static enum at_response_type scan_line(const void *line, size_t len, void *arg)
     return AT_RESPONSE_UNKNOWN;
 }
 
-static void handle_urc(const void *line, size_t len, void *arg)
+static void handle_urc(const char *line, size_t len, void *arg)
 {
     (void) len;
     struct cellular_sim800 *modem = arg;
@@ -164,7 +164,7 @@ static int sim800_detach(struct cellular *modem)
 }
 
 
-static enum at_response_type scanner_cipstatus(const void *line, size_t len, void *arg)
+static enum at_response_type scanner_cipstatus(const char *line, size_t len, void *arg)
 {
     (void) len;
     (void) arg;
@@ -206,7 +206,7 @@ static int sim800_ipstatus(struct cellular *modem)
     return 0;
 }
 
-static enum at_response_type scanner_cifsr(const void *line, size_t len, void *arg)
+static enum at_response_type scanner_cifsr(const char *line, size_t len, void *arg)
 {
     (void) len;
     (void) arg;
@@ -247,7 +247,7 @@ static int sim800_pdp_open(struct cellular *modem, const char *apn)
 }
 
 
-static enum at_response_type scanner_cipshut(const void *line, size_t len, void *arg)
+static enum at_response_type scanner_cipshut(const char *line, size_t len, void *arg)
 {
     (void) arg;
     if (!strncmp(line, "SHUT OK", len))
@@ -290,7 +290,7 @@ static int sim800_socket_connect(struct cellular *modem, int connid, const char 
     return -1;
 }
 
-static enum at_response_type scanner_cipsend(const void *line, size_t len, void *arg)
+static enum at_response_type scanner_cipsend(const char *line, size_t len, void *arg)
 {
     (void) arg;
 
@@ -320,7 +320,7 @@ static ssize_t sim800_socket_send(struct cellular *modem, int connid, const void
     return amount;
 }
 
-static enum at_response_type scanner_cipclose(const void *line, size_t len, void *arg)
+static enum at_response_type scanner_cipclose(const char *line, size_t len, void *arg)
 {
     (void) len;
     (void) arg;

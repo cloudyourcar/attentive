@@ -54,7 +54,7 @@ static void handle_sigusr1(int signal)
     (void)signal;
 }
 
-static void handle_response(const void *buf, size_t len, void *arg)
+static void handle_response(const char *buf, size_t len, void *arg)
 {
     struct at_unix *priv = (struct at_unix *) arg;
 
@@ -65,7 +65,7 @@ static void handle_response(const void *buf, size_t len, void *arg)
     pthread_cond_signal(&priv->cond);
 }
 
-static void handle_urc(const void *buf, size_t len, void *arg)
+static void handle_urc(const char *buf, size_t len, void *arg)
 {
     struct at *at = (struct at *) arg;
 
@@ -74,7 +74,7 @@ static void handle_urc(const void *buf, size_t len, void *arg)
         at->cbs->handle_urc(buf, len, at->arg);
 }
 
-enum at_response_type scan_line(const void *line, size_t len, void *arg)
+enum at_response_type scan_line(const char *line, size_t len, void *arg)
 {
     struct at *at = (struct at *) arg;
 
