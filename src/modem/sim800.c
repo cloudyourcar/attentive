@@ -12,7 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "generic.h"
+#include "common.h"
 
 /*
  * SIM800 probably holds the highly esteemed position of the world's worst
@@ -342,12 +342,12 @@ static const struct cellular_ops sim800_ops = {
     .pdp_open = sim800_pdp_open,
     .pdp_close = sim800_pdp_close,
 
-    .imei = generic_op_imei,
-    .iccid = generic_op_iccid,
-    .creg = generic_op_creg,
-    .rssi = generic_op_rssi,
-    .clock_gettime = generic_op_clock_gettime,
-    .clock_settime = generic_op_clock_settime,
+    .imei = cellular_op_imei,
+    .iccid = cellular_op_iccid,
+    .creg = cellular_op_creg,
+    .rssi = cellular_op_rssi,
+    .clock_gettime = cellular_op_clock_gettime,
+    .clock_settime = cellular_op_clock_settime,
     .socket_connect = sim800_socket_connect,
     .socket_send = sim800_socket_send,
     .socket_close = sim800_socket_close,
