@@ -87,35 +87,6 @@ static const struct at_callbacks sim800_callbacks = {
 };
 
 
-static int sim800_attach(struct cellular *modem)
-{
-    at_set_callbacks(modem->at, &sim800_callbacks, (void *) modem);
-
-    at_set_timeout(modem->at, 1);
-    at_command(modem->at, "AT");        /* Aid autobauding. Always a good idea. */
-    at_command(modem->at, "ATE0");      /* Disable local echo. */
-
-    /* Initialize modem. */
-    static const char *init_strings[] = {
-        "AT+IFC=0,0",                   /* Disable hardware flow control. */
-        "AT+CMEE=2",                    /* Enable extended error reporting. */
-        "AT+CLTS=1",                    /* Sync RTC with network time. */
-        "AT&W0",                        /* Save configuration. */
-        NULL
-    };
-    for (const char **command=init_strings; *command; command++)
-        at_command_simple(modem->at, "%s", *command);
-
-    return 0;
-}
-
-static int sim800_detach(struct cellular *modem)
-{
-    at_set_callbacks(modem->at, NULL, NULL);
-    return 0;
-}
-
-
 /**
  * SIM800 IP configuration commands fail if the IP application is running,
  * even though the configuration settings are already right. The following
@@ -150,6 +121,48 @@ static int sim800_config(struct cellular *modem, const char *option, const char 
     errno = ETIMEDOUT;
     return -1;
 }
+
+
+static int sim800_attach(struct cellular *modem)
+{
+    at_set_callbacks(modem->at, &sim800_callbacks, (void *) modem);
+
+    at_set_timeout(modem->at, 1);
+    at_command(modem->at, "AT");        /* Aid autobauding. Always a good idea. */
+    at_command(modem->at, "ATE0");      /* Disable local echo. */
+
+    /* Initialize modem. */
+    static const char *init_strings[] = {
+        "AT+IFC=0,0",                   /* Disable hardware flow control. */
+        "AT+CMEE=2",                    /* Enable extended error reporting. */
+        "AT+CLTS=1",                    /* Sync RTC with network time. */
+        "AT&W0",                        /* Save configuration. */
+        NULL
+    };
+    for (const char **command=init_strings; *command; command++)
+        at_command_simple(modem->at, "%s", *command);
+
+    /* Configure IP application. */
+
+    /* Switch to multiple connections mode; it's less buggy. */
+    if (sim800_config(modem, "CIPMUX", "1", SIM800_CIPCFG_RETRIES) != 0)
+        return -1;
+    /* Receive data manually. */
+    if (sim800_config(modem, "CIPRXGET", "1", SIM800_CIPCFG_RETRIES) != 0)
+        return -1;
+    /* Enable quick send mode. */
+    if (sim800_config(modem, "CIPQSEND", "1", SIM800_CIPCFG_RETRIES) != 0)
+        return -1;
+
+    return 0;
+}
+
+static int sim800_detach(struct cellular *modem)
+{
+    at_set_callbacks(modem->at, NULL, NULL);
+    return 0;
+}
+
 
 static enum at_response_type scanner_cipstatus(const void *line, size_t len, void *arg)
 {
@@ -207,16 +220,6 @@ static enum at_response_type scanner_cifsr(const void *line, size_t len, void *a
 
 static int sim800_pdp_open(struct cellular *modem, const char *apn)
 {
-    /* Switch to multiple connections mode; it's less buggy. */
-    if (sim800_config(modem, "CIPMUX", "1", SIM800_CIPCFG_RETRIES) != 0)
-        return -1;
-    /* Receive data manually. */
-    if (sim800_config(modem, "CIPRXGET", "1", SIM800_CIPCFG_RETRIES) != 0)
-        return -1;
-    /* Enable quick send mode. */
-    if (sim800_config(modem, "CIPQSEND", "1", SIM800_CIPCFG_RETRIES) != 0)
-        return -1;
-
     /* Do nothing if the context is already open. */
     if (sim800_ipstatus(modem) == 1)
         return 0;
