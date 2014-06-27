@@ -258,7 +258,8 @@ static const char *_at_command(struct at_unix *priv, const void *data, size_t si
         ts.tv_sec += priv->timeout;
 
         while (priv->open && priv->waiting)
-            pthread_cond_timedwait(&priv->cond, &priv->mutex, &ts);
+            if (pthread_cond_timedwait(&priv->cond, &priv->mutex, &ts) == ETIMEDOUT)
+                break;
     } else {
         while (priv->open && priv->waiting)
             pthread_cond_wait(&priv->cond, &priv->mutex);
