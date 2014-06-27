@@ -16,14 +16,15 @@
 
 int main(int argc, char *argv[])
 {
-    assert(argc-1 == 1);
+    assert(argc-1 == 2);
     const char *devpath = argv[1];
+    const char *apn = argv[2];
 
     struct at *at = at_alloc_unix(devpath, B115200);
     struct cellular *modem = cellular_sim800_alloc();
 
     assert(at_open(at) == 0);
-    assert(cellular_attach(modem, at) == 0);
+    assert(cellular_attach(modem, at, apn) == 0);
 
     printf("* getting network status\n");
     int creg, rssi;

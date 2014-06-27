@@ -270,7 +270,7 @@ static int sim800_socket_connect(struct cellular *modem, int connid, const char 
     /* Send connection request. */
     at_set_timeout(modem->at, 150);
     priv->socket_status[connid] = SIM800_SOCKET_STATUS_UNKNOWN;
-    at_command_simple(modem->at, "AT+CIPSTART=%d,TCP,\"%s\",%d", connid, host, port);
+    cellular_command_simple_pdp(modem, "AT+CIPSTART=%d,TCP,\"%s\",%d", connid, host, port);
 
     /* Wait for socket status URC. */
     for (int i=0; i<SIM800_CONNECT_TIMEOUT; i++) {
