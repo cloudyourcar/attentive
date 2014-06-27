@@ -291,8 +291,6 @@ static int sim800_socket_connect(struct cellular *modem, int connid, const char 
 {
     struct cellular_sim800 *priv = (struct cellular_sim800 *) modem;
 
-    /* TODO: Missing PDP support. */
-
     /* Send connection request. */
     at_set_timeout(modem->at, 150);
     priv->socket_status[connid] = SIM800_SOCKET_STATUS_UNKNOWN;
