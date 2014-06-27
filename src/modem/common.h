@@ -11,6 +11,42 @@
 
 #include <attentive/cellular.h>
 
+/**
+ * Request a PDP context. Opens one if isn't already active.
+ *
+ * @returns Zero on success, -1 and sets errno on failure
+ */
+int cellular_pdp_request(struct cellular *modem);
+
+/**
+ * Signal network connection success.
+ */
+void cellular_pdp_success(struct cellular *modem);
+
+/**
+ * Signal network connection failure.
+ */
+void cellular_pdp_failure(struct cellular *modem);
+
+/**
+ * Perform a network command, requesting a PDP context and signalling success
+ * or failure to the PDP machinery. Returns -1 on failure.
+ */
+#define cellular_command_simple_pdp(modem, command...)                      \
+    do {                                                                    \
+        /* Attempt to establish a PDP context. */                           \
+        if (cellular_pdp_request(modem) != 0)                               \
+            return -1;                                                      \
+        /* Send the command */                                              \
+        const char *netresponse = at_command(modem->at, command);           \
+        if (netresponse == NULL || strcmp(netresponse, "")) {               \
+            cellular_pdp_failure(modem);                                    \
+            return -1;                                                      \
+        } else {                                                            \
+            cellular_pdp_success(modem);                                    \
+        }                                                                   \
+    } while (0)
+
 /*
  * 3GPP TS 27.007 compatible operations.
  */

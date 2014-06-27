@@ -8,9 +8,17 @@
 
 #include <attentive/cellular.h>
 
-int cellular_attach(struct cellular *modem, struct at *at)
+#include "modem/common.h"
+
+
+int cellular_attach(struct cellular *modem, struct at *at, const char *apn)
 {
     modem->at = at;
+    modem->apn = apn;
+
+    /* Reset PDP failure counters. */
+    cellular_pdp_success(modem);
+
     return modem->ops->attach ? modem->ops->attach(modem) : 0;
 }
 

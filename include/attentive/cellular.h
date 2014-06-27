@@ -34,6 +34,11 @@ enum {
 struct cellular {
     const struct cellular_ops *ops;
     struct at *at;
+
+    /* Private fields. */
+    const char *apn;
+    int pdp_failures;
+    int pdp_threshold;
 };
 
 struct cellular_ops {
@@ -75,6 +80,9 @@ struct cellular_ops {
 /**
  * Allocate a cellular modem instance.
  *
+ * NOTE: This is an abstract interface. You sould be using the modem-specific
+ *       cellular_alloc_*() function instead.
+ *
  * @returns Instance pointer on success, NULL and sets errno on failure.
  */
 struct cellular *cellular_alloc(void);
@@ -85,9 +93,10 @@ struct cellular *cellular_alloc(void);
  *
  * @param modem Cellular modem instance.
  * @param at AT channel instance.
+ * @param apn APN name. Not copied.
  * @returns Zero on success, -1 and sets errno on failure.
  */
-int cellular_attach(struct cellular *modem, struct at *at);
+int cellular_attach(struct cellular *modem, struct at *at, const char *apn);
 
 /**
  * Detach cellular modem instance.

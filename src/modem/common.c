@@ -11,6 +11,54 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "common.h"
+
+
+#define PDP_RETRY_THRESHOLD_INITIAL     3
+#define PDP_RETRY_THRESHOLD_MULTIPLIER  2
+
+/*
+ * PDP management logic.
+ *
+ * 1. PDP contexts cannot be activated too often. Common GSM etiquette requires
+ *    that some kind of backoff strategy should be implemented to avoid hammering
+ *    the network with requests. Here we use a simple exponential backoff which
+ *    is reset every time a connection succeeds.
+ *
+ * 2. Contexts can get stuck sometimes; the modem reports active context but no
+ *    data can be transmitted. Telit modems are especially prone to this if
+ *    AT+CGDCONT is invoked while the context is active. Our logic should handle
+ *    this after a few connection failures.
+ */
+
+int cellular_pdp_request(struct cellular *modem)
+{
+    if (modem->pdp_failures >= modem->pdp_threshold) {
+        /* Possibly stuck PDP context; close it. */
+        modem->ops->pdp_close(modem);
+        /* Perform exponential backoff. */
+        modem->pdp_threshold *= (1+PDP_RETRY_THRESHOLD_MULTIPLIER);
+    }
+
+    if (modem->ops->pdp_open(modem, modem->apn) == -1) {
+        cellular_pdp_failure(modem);
+        return -1;
+    }
+
+    return 0;
+}
+
+void cellular_pdp_success(struct cellular *modem)
+{
+    modem->pdp_failures = 0;
+    modem->pdp_threshold = PDP_RETRY_THRESHOLD_INITIAL;
+}
+
+void cellular_pdp_failure(struct cellular *modem)
+{
+    modem->pdp_failures++;
+}
+
 
 int cellular_op_imei(struct cellular *modem, char *buf, size_t len)
 {
