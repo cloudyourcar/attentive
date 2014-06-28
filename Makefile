@@ -12,9 +12,9 @@ LIBRARIES = check glib-2.0
 all: test example
 	@echo "+++ All good."""
 
-test: src/tests-parser
+test: tests/test-parser
 	@echo "+++ Running parser test suite."
-	src/tests-parser
+	tests/test-parser
 
 clean:
 	$(RM) tests example *.o
@@ -32,11 +32,11 @@ src/modem/common.o: src/modem/common.c $(MODEM)
 src/modem/generic.o: src/modem/generic.c $(MODEM)
 src/modem/sim800.o: src/modem/sim800.c $(MODEM)
 src/modem/telit2.o: src/modem/telit2.c $(MODEM)
-src/tests-parser.o: src/tests-parser.c $(MODEM)
+tests/test-parser.o: tests/test-parser.c $(MODEM)
 src/example-at.o: src/example-at.c $(AT)
 src/example-sim800.o: src/example-sim800.c $(CELLULAR)
 
-src/tests-parser: src/tests-parser.o src/parser.o
+tests/test-parser: tests/test-parser.o src/parser.o
 
 src/example-at: src/example-at.o src/parser.o src/at-unix.o
 src/example-sim800: src/example-sim800.o src/modem/sim800.o src/modem/common.o src/cellular.o src/at-unix.o src/parser.o
