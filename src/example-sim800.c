@@ -10,9 +10,11 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <attentive/at-unix.h>
 #include <attentive/cellular.h>
+
 
 int main(int argc, char *argv[])
 {
@@ -60,16 +62,26 @@ int main(int argc, char *argv[])
     /* network stuff. */
     int socket = 2;
 
-    if (modem->ops->socket_connect(modem, socket, "google.pl", 80) == 0) {
+    if (modem->ops->socket_connect(modem, socket, "google.com", 80) == 0) {
         printf("connect successful\n");
     } else {
         perror("connect");
     }
 
-    if (modem->ops->socket_send(modem, socket, "GET / HTTP/1.0", 14, 0) == 14) {
+    const char *request = "GET / HTTP/1.0\r\n\r\n";
+    if (modem->ops->socket_send(modem, socket, request, strlen(request), 0) == (int) strlen(request)) {
         printf("send successful\n");
     } else {
         perror("send");
+    }
+
+    int len;
+    char buf[32];
+    while ((len = modem->ops->socket_recv(modem, socket, buf, sizeof(buf), 0)) >= 0) {
+        if (len > 0)
+            printf("Received: >\x1b[0;1;33m%.*s\x1b[0m<\n", len, buf);
+        else
+            sleep(1);
     }
 
     if (modem->ops->socket_close(modem, socket) == 0) {
