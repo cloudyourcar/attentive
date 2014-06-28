@@ -23,7 +23,7 @@
 GQueue expected_responses = G_QUEUE_INIT;
 GQueue expected_urcs = G_QUEUE_INIT;
 
-void assert_line_expected(const void *line, size_t len, GQueue *q)
+void assert_line_expected(const char *line, size_t len, GQueue *q)
 {
     const char *expected = g_queue_pop_head(q);
     ck_assert_msg(expected != NULL);
@@ -31,14 +31,14 @@ void assert_line_expected(const void *line, size_t len, GQueue *q)
     ck_assert_int_eq(len, strlen(expected));
 }
 
-void handle_response(const void *line, size_t len, void *priv)
+void handle_response(const char *line, size_t len, void *priv)
 {
     (void) priv;
     //printf("response: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
     assert_line_expected(line, len, &expected_responses);
 }
 
-void handle_urc(const void *line, size_t len, void *priv)
+void handle_urc(const char *line, size_t len, void *priv)
 {
     (void) priv;
     //printf("urc: >>>%.*s<<< (%d)\n", (int) len, (char *) line, (int) len);
@@ -210,7 +210,7 @@ START_TEST(test_parser_overflow)
 }
 END_TEST
 
-static enum at_response_type line_scanner(const void *line, size_t len, void *priv)
+static enum at_response_type line_scanner(const char *line, size_t len, void *priv)
 {
     (void) len;
     (void) priv;
