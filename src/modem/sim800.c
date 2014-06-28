@@ -173,7 +173,7 @@ static enum at_response_type scanner_cipstatus(const char *line, size_t len, voi
     if (!strcmp(line, "OK"))
         return AT_RESPONSE_INTERMEDIATE;
     /* Collect the entire post-OK response until the last C: line. */
-    if (!strncmp(line, "C: 5", 4))
+    if (!strncmp(line, "C: 5", strlen("C: 5")))
         return AT_RESPONSE_FINAL;
     return AT_RESPONSE_UNKNOWN;
 }
@@ -249,8 +249,9 @@ static int sim800_pdp_open(struct cellular *modem, const char *apn)
 
 static enum at_response_type scanner_cipshut(const char *line, size_t len, void *arg)
 {
+    (void) len;
     (void) arg;
-    if (!strncmp(line, "SHUT OK", len))
+    if (!strcmp(line, "SHUT OK"))
         return AT_RESPONSE_FINAL_OK;
     return AT_RESPONSE_UNKNOWN;
 }
@@ -292,14 +293,15 @@ static int sim800_socket_connect(struct cellular *modem, int connid, const char 
 
 static enum at_response_type scanner_cipsend(const char *line, size_t len, void *arg)
 {
+    (void) len;
     (void) arg;
 
     int connid, amount;
     if (sscanf(line, "DATA ACCEPT:%d,%d", &connid, &amount) == 2)
         return AT_RESPONSE_FINAL_OK;
-    if (!strncmp(line, "SEND OK", len))
+    if (!strcmp(line, "SEND OK"))
         return AT_RESPONSE_FINAL_OK;
-    if (!strncmp(line, "SEND FAIL", len))
+    if (!strcmp(line, "SEND FAIL"))
         return AT_RESPONSE_FINAL;
     return AT_RESPONSE_UNKNOWN;
 }
