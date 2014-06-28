@@ -236,7 +236,6 @@ static const char *_at_command(struct at_unix *priv, const void *data, size_t si
     }
 
     /* Prepare parser. */
-    at_parser_reset(priv->at.parser);
     at_parser_await_response(priv->at.parser);
 
     /* Send the command. */
