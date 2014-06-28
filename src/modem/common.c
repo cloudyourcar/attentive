@@ -40,7 +40,7 @@ int cellular_pdp_request(struct cellular *modem)
         modem->pdp_threshold *= (1+PDP_RETRY_THRESHOLD_MULTIPLIER);
     }
 
-    if (modem->ops->pdp_open(modem, modem->apn) == -1) {
+    if (modem->ops->pdp_open(modem, modem->apn) != 0) {
         cellular_pdp_failure(modem);
         return -1;
     }

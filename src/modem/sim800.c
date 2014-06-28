@@ -202,7 +202,7 @@ static enum at_response_type scanner_cipstatus(const char *line, size_t len, voi
 /**
  * Retrieve AT+CIPSTATUS state.
  *
- * @returns 1 if context is open, 0 if context is closed, -1 on errors.
+ * @returns Zero if context is open, -1 and sets errno otherwise.
  */
 static int sim800_ipstatus(struct cellular *modem)
 {
@@ -220,11 +220,12 @@ static int sim800_ipstatus(struct cellular *modem)
     }
     state += strlen("STATE: ");
     if (!strncmp(state, "IP STATUS", strlen("IP STATUS")))
-        return 1;
+        return 0;
     if (!strncmp(state, "IP PROCESSING", strlen("IP PROCESSING")))
-        return 1;
+        return 0;
 
-    return 0;
+    errno = ENETDOWN;
+    return -1;
 }
 
 static enum at_response_type scanner_cifsr(const char *line, size_t len, void *arg)
@@ -242,7 +243,7 @@ static enum at_response_type scanner_cifsr(const char *line, size_t len, void *a
 static int sim800_pdp_open(struct cellular *modem, const char *apn)
 {
     /* Do nothing if the context is already open. */
-    if (sim800_ipstatus(modem) == 1)
+    if (sim800_ipstatus(modem) == 0)
         return 0;
 
     at_set_timeout(modem->at, 150);
