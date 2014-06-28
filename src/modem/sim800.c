@@ -344,6 +344,62 @@ static ssize_t sim800_socket_send(struct cellular *modem, int connid, const void
     return amount;
 }
 
+static enum at_response_type scanner_ciprxget(const char *line, size_t len, void *arg)
+{
+    (void) len;
+    (void) arg;
+
+    int requested, confirmed;
+    if (sscanf(line, "+CIPRXGET: 2,%*d,%d,%d", &requested, &confirmed) == 2)
+        if (requested > 0)
+            return AT_RESPONSE_RAWDATA_FOLLOWS(requested);
+
+    return AT_RESPONSE_UNKNOWN;
+}
+
+static ssize_t sim800_socket_recv(struct cellular *modem, int connid, void *buffer, size_t length, int flags)
+{
+    (void) flags;
+
+    int cnt = 0;
+    while (cnt < (int) length) {
+        int chunk = (int) length - cnt;
+        /* Limit read size to avoid overflowing AT response buffer. */
+        if (chunk > 128)
+            chunk = 128;
+
+        /* Perform the read. */
+        at_set_timeout(modem->at, 150);
+        at_set_command_scanner(modem->at, scanner_ciprxget);
+        const char *response = at_command(modem->at, "AT+CIPRXGET=2,%d,%d", connid, chunk);
+        if (response == NULL)
+            return -1;
+
+        /* Find the header line. */
+        int requested, confirmed;
+        at_simple_scanf(response, "+CIPRXGET: 2,%*d,%d,%d", &requested, &confirmed);
+
+        /* Bail out if we're out of data. */
+        /* FIXME: We should maybe block until we receive something? */
+        if (requested == 0)
+            break;
+
+        /* Locate the payload. */
+        const char *data = strchr(response, '\n');
+        if (data == NULL) {
+            errno = EPROTO;
+            return -1;
+        }
+        data += 1;
+
+        /* Copy payload to result buffer. */
+        memcpy((char *)buffer + cnt, data, requested);
+        cnt += requested;
+    }
+
+    return cnt;
+}
+
 static enum at_response_type scanner_cipclose(const char *line, size_t len, void *arg)
 {
     (void) len;
@@ -380,6 +436,7 @@ static const struct cellular_ops sim800_ops = {
     .clock_settime = cellular_op_clock_settime,
     .socket_connect = sim800_socket_connect,
     .socket_send = sim800_socket_send,
+    .socket_recv = sim800_socket_recv,
     .socket_close = sim800_socket_close,
 };
 
