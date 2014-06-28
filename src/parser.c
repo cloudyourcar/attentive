@@ -107,9 +107,13 @@ bool at_prefix_in_table(const char *line, const char *table[])
     return false;
 }
 
-static enum at_response_type generic_line_scanner(const char *line, size_t len)
+static enum at_response_type generic_line_scanner(const char *line, size_t len, struct at_parser *parser)
 {
     (void) len;
+
+    if (parser->state == STATE_DATAPROMPT)
+        if (len == 2 && !memcmp(line, "> ", 2))
+            return AT_RESPONSE_FINAL_OK;
 
     if (at_prefix_in_table(line, urc_responses))
         return AT_RESPONSE_URC;
@@ -176,7 +180,7 @@ static void parser_handle_line(struct at_parser *parser)
     if (parser->cbs->scan_line)
         type = parser->cbs->scan_line(line, len, parser->priv);
     if (!type)
-        type = generic_line_scanner(line, len);
+        type = generic_line_scanner(line, len, parser);
 
     /* Expected URCs and all unexpected lines are sent to URC handler. */
     if (type == AT_RESPONSE_URC || parser->state == STATE_IDLE)
