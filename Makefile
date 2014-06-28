@@ -17,8 +17,8 @@ test: tests/test-parser
 	tests/test-parser
 
 clean:
-	$(RM) tests example *.o
-	$(RM) -r *.dSYM/
+	$(RM) src/example-at src/example-sim800 tests/test-parser
+	$(RM) src/*.o src/modem/*.o tests/*.o
 
 PARSER = include/attentive/parser.h
 AT = include/attentive/at.h include/attentive/at-unix.h $(PARSER)
