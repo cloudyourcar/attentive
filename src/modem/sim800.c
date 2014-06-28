@@ -61,11 +61,32 @@ struct cellular_sim800 {
 
 static enum at_response_type scan_line(const char *line, size_t len, void *arg)
 {
-    (void) len; /* FIXME: we could do better */
-    (void) arg;
+    (void) len;
+    struct cellular_sim800 *priv = arg;
 
     if (at_prefix_in_table(line, sim800_urc_responses))
         return AT_RESPONSE_URC;
+
+    /* Socket status notifications in form of "%d, <status>". */
+    if (line[0] >= '0' && line[0] <= '0'+SIM800_NSOCKETS &&
+        !strncmp(line+1, ", ", 2))
+    {
+        int socket = line[0] - '0';
+
+        if (!strcmp(line+3, "CONNECT OK"))
+        {
+            priv->socket_status[socket] = SIM800_SOCKET_STATUS_CONNECTED;
+            return AT_RESPONSE_URC;
+        }
+
+        if (!strcmp(line+3, "CONNECT FAIL") ||
+            !strcmp(line+3, "ALREADY CONNECT") ||
+            !strcmp(line+3, "CLOSED"))
+        {
+            priv->socket_status[socket] = SIM800_SOCKET_STATUS_ERROR;
+            return AT_RESPONSE_URC;
+        }
+    }
 
     return AT_RESPONSE_UNKNOWN;
 }
