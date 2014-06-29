@@ -421,6 +421,108 @@ int sim800_socket_close(struct cellular *modem, int connid)
     return 0;
 }
 
+static int sim800_ftp_open(struct cellular *modem, const char *host, uint16_t port, const char *username, const char *password, bool passive)
+{
+    /* Configure server parameters. */
+    at_command_simple(modem->at, "AT+FTPCID=1");
+    at_command_simple(modem->at, "AT+FTPSERV=\"%s\"", host);
+    at_command_simple(modem->at, "AT+FTPPORT=%d", port);
+    at_command_simple(modem->at, "AT+FTPUN=\"%s\"", username);
+    at_command_simple(modem->at, "AT+FTPPW=\"%s\"", password);
+    at_command_simple(modem->at, "AT+FTPMODE=%d", (int) passive);
+    at_command_simple(modem->at, "AT+FTPTYPE=I");
+
+    return 0;
+}
+
+static int sim800_ftp_get(struct cellular *modem, const char *filename)
+{
+    struct cellular_sim800 *priv = (struct cellular_sim800 *) modem;
+
+    /* Configure filename. */
+    at_command_simple(modem->at, "AT+FTPGETPATH=\"/\"");
+    at_command_simple(modem->at, "AT+FTPGETNAME=\"%s\"", filename);
+
+    /* Try to open the connection. */
+    priv->ftpget1_status = -1;
+    cellular_command_simple_pdp(modem, "AT+FTPGET=1");
+
+    /* Wait for the operation result. */
+    for (int i=0; i<SIM800_CONNECT_TIMEOUT; i++) {
+        if (priv->ftpget1_status == 1)
+            return 0;
+
+        if (priv->ftpget1_status == 0) {
+            errno = ECONNABORTED;
+            return -1;
+        }
+
+        sleep(1);
+    }
+
+    errno = ETIMEDOUT;
+    return -1;
+}
+
+static enum at_response_type scanner_ftpget2(const char *line, size_t len, void *arg)
+{
+    int cnflength;
+    /* TODO: Verify if cnflength is indeed the size of raw payload. */
+    if (sscanf(line, "+FTPGET: 2,%d", &cnflength) == 1)
+        return AT_RESPONSE_RAWDATA_FOLLOWS(cnflengh);
+    return AT_RESPONSE_UNKNOWN;
+}
+
+static int sim800_ftp_getdata(struct cellular *modem, char *buffer, size_t length)
+{
+    at_set_timeout(modem->at, 150);
+    at_set_command_scanner(scanner_ftpget2);
+    const char *response = at_command(modem->at, "AT+FTPGET=2,%zu", length);
+
+    if (response == NULL)
+        return -1;
+
+    int cnflength;
+    if (sscanf(response, "+FTPGET=2,%d", &cnflength) == 1) {
+        /* Bail out of there's no data. */
+        /* FIXME: We should probably block here. */
+        if (cnflength == 0)
+            return 0;
+
+        /* Locate the payload. */
+        const char *data = strchr(response, '\n');
+        if (data == NULL) {
+            errno = EPROTO;
+            return -1;
+        }
+        data += 1;
+
+        /* Copy payload to result buffer. */
+        memcpy((char *)buffer, data, cnflength);
+        return cnflength;
+    } else {
+        errno = EPROTO;
+        return -1;
+    }
+}
+
+static int sim800_ftp_close(struct cellular *modem)
+{
+    /* Surprise: there is no FTP close command. Close the bearer instead, which
+     * will cause a "net error" immediately.
+     *
+     * NOTE: Performing frequent PDP reconnects is unwelcome under the GSM
+     * etiquette. As long as the bearer opened by AT+CIICR is active, we
+     * shouldn't be causing excessive reconnects; this has been rougly verified
+     * using an operator-side diagnostic tool, but we can't say for sure. If
+     * your device causes a reconnect storm, at best this will cause the BTS to
+     * blacklist you for a while; at worst, you'll get an angry email from your
+     * provider. Please run your own tests if you plan to use FTP a lot. */
+    at_command_simple(modem->at, "AT+SAPBR=0,1");
+
+    return 0;
+}
+
 static const struct cellular_ops sim800_ops = {
     .attach = sim800_attach,
     .detach = sim800_detach,
@@ -438,6 +540,10 @@ static const struct cellular_ops sim800_ops = {
     .socket_send = sim800_socket_send,
     .socket_recv = sim800_socket_recv,
     .socket_close = sim800_socket_close,
+    .ftp_open = sim800_ftp_open,
+    .ftp_get = sim800_ftp_get,
+    .ftp_getdata = sim800_ftp_getdata,
+    .ftp_close = sim800_ftp_close,
 };
 
 struct cellular *cellular_sim800_alloc(void)
