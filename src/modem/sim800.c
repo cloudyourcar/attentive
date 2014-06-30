@@ -464,17 +464,20 @@ static int sim800_ftp_get(struct cellular *modem, const char *filename)
 
 static enum at_response_type scanner_ftpget2(const char *line, size_t len, void *arg)
 {
+    (void) len;
+    (void) arg;
+
     int cnflength;
     /* TODO: Verify if cnflength is indeed the size of raw payload. */
     if (sscanf(line, "+FTPGET: 2,%d", &cnflength) == 1)
-        return AT_RESPONSE_RAWDATA_FOLLOWS(cnflengh);
+        return AT_RESPONSE_RAWDATA_FOLLOWS(cnflength);
     return AT_RESPONSE_UNKNOWN;
 }
 
 static int sim800_ftp_getdata(struct cellular *modem, char *buffer, size_t length)
 {
     at_set_timeout(modem->at, 150);
-    at_set_command_scanner(scanner_ftpget2);
+    at_set_command_scanner(modem->at, scanner_ftpget2);
     const char *response = at_command(modem->at, "AT+FTPGET=2,%zu", length);
 
     if (response == NULL)
