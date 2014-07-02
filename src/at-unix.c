@@ -348,6 +348,7 @@ void *at_reader_thread(void *arg)
         /* Attempt to read some data. */
         char ch;
         int result = read(priv->fd, &ch, 1);
+        int why = errno;
 
         pthread_mutex_lock(&priv->mutex);
         /* Unlock access to the port descriptor. */
@@ -362,8 +363,8 @@ void *at_reader_thread(void *arg)
             at_parser_feed(priv->at.parser, &ch, 1);
             pthread_mutex_unlock(&priv->mutex);
         } else if (result == -1) {
-            printf("at_reader_thread[%s]: %s\n", priv->devpath, strerror(errno));
-            if (errno == EINTR)
+            printf("at_reader_thread[%s]: %s\n", priv->devpath, strerror(why));
+            if (why == EINTR)
                 continue;
             else
                 break;
