@@ -96,7 +96,7 @@ static void handle_urc(const char *line, size_t len, void *arg)
     (void) len;
     struct cellular_sim800 *priv = arg;
 
-    printf("[SIM800@%p] URC: %.*s\n", arg, (int) len, line);
+    printf("[sim800@%p] urc: %.*s\n", arg, (int) len, line);
 
     if (sscanf(line, "+FTPGET: 1,%d", &priv->ftpget1_status) == 1)
         return;
