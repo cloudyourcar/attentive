@@ -318,8 +318,13 @@ static enum at_response_type scanner_cipsend(const char *line, size_t len, void 
     (void) arg;
 
     int connid, amount;
+    char last;
     if (sscanf(line, "DATA ACCEPT:%d,%d", &connid, &amount) == 2)
         return AT_RESPONSE_FINAL_OK;
+    if (sscanf(line, "%d, SEND O%c", &connid, &last) == 2 && last == 'K')
+        return AT_RESPONSE_FINAL_OK;
+    if (sscanf(line, "%d, SEND FAI%c", &connid, &last) == 2 && last == 'L')
+        return AT_RESPONSE_FINAL;
     if (!strcmp(line, "SEND OK"))
         return AT_RESPONSE_FINAL_OK;
     if (!strcmp(line, "SEND FAIL"))
