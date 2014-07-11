@@ -242,14 +242,15 @@ static enum at_response_type scanner_cifsr(const char *line, size_t len, void *a
 
 static int sim800_pdp_open(struct cellular *modem, const char *apn)
 {
-    /* Do nothing if the context is already open. */
-    if (sim800_ipstatus(modem) == 0)
-        return 0;
-
     at_set_timeout(modem->at, 150);
 
-    /* Configure context for FTP/HTTP applications. */
+    /* Configure and open context for FTP/HTTP applications. */
     at_command_simple(modem->at, "AT+SAPBR=3,1,APN,\"%s\"", apn);
+    at_command(modem->at, "AT+SAPBR=1,1");
+
+    /* Skip the configuration if context is already open. */
+    if (sim800_ipstatus(modem) == 0)
+        return 0;
 
     /* Commands below don't check the response. This is intentional; instead
      * of trying to stay in sync with the GPRS state machine we blindly issue
