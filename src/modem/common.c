@@ -71,6 +71,7 @@ int cellular_op_imei(struct cellular *modem, char *buf, size_t len)
     at_set_timeout(modem->at, 1);
     const char *response = at_command(modem->at, "AT+CGSN");
     at_simple_scanf(response, fmt, buf);
+    buf[len-1] = '\0';
 
     return 0;
 }
@@ -86,6 +87,7 @@ int cellular_op_iccid(struct cellular *modem, char *buf, size_t len)
     at_set_timeout(modem->at, 5);
     const char *response = at_command(modem->at, "AT+CCID");
     at_simple_scanf(response, fmt, buf);
+    buf[len-1] = '\0';
 
     return 0;
 }
