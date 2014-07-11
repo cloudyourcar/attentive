@@ -456,7 +456,7 @@ static int sim800_ftp_get(struct cellular *modem, const char *filename)
         if (priv->ftpget1_status == 1)
             return 0;
 
-        if (priv->ftpget1_status == 0) {
+        if (priv->ftpget1_status != -1) {
             errno = ECONNABORTED;
             return -1;
         }
