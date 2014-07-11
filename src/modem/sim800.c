@@ -490,7 +490,7 @@ static int sim800_ftp_getdata(struct cellular *modem, char *buffer, size_t lengt
         return -1;
 
     int cnflength;
-    if (sscanf(response, "+FTPGET=2,%d", &cnflength) == 1) {
+    if (sscanf(response, "+FTPGET: 2,%d", &cnflength) == 1) {
         /* Bail out of there's no data. */
         /* FIXME: We should probably block here. */
         if (cnflength == 0)
