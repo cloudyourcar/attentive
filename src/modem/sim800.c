@@ -93,10 +93,9 @@ static enum at_response_type scan_line(const char *line, size_t len, void *arg)
 
 static void handle_urc(const char *line, size_t len, void *arg)
 {
-    (void) len;
     struct cellular_sim800 *priv = arg;
 
-    printf("[sim800@%p] urc: %.*s\n", arg, (int) len, line);
+    printf("[sim800@%p] urc: %.*s\n", priv, (int) len, line);
 
     if (sscanf(line, "+FTPGET: 1,%d", &priv->ftpget1_status) == 1)
         return;
@@ -281,6 +280,7 @@ static enum at_response_type scanner_cipshut(const char *line, size_t len, void 
 
 static int sim800_pdp_close(struct cellular *modem)
 {
+    at_set_timeout(modem->at, 150);
     at_set_command_scanner(modem->at, scanner_cipshut);
     at_command_simple(modem->at, "AT+CIPSHUT");
 
