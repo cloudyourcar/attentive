@@ -39,7 +39,7 @@ enum sim800_socket_status {
 #define SIM800_CONNECT_TIMEOUT          60
 #define SIM800_CIPCFG_RETRIES           10
 
-static const char *sim800_urc_responses[] = {
+static const char *const sim800_urc_responses[] = {
     "+CIPRXGET: 1,",    /* incoming socket data notification */
     "+FTPGET: 1,",      /* FTP state change notification */
     "+PDP: DEACT",      /* PDP disconnected */
@@ -152,14 +152,14 @@ static int sim800_attach(struct cellular *modem)
     at_command(modem->at, "ATE0");      /* Disable local echo. */
 
     /* Initialize modem. */
-    static const char *init_strings[] = {
+    static const char *const init_strings[] = {
         "AT+IFC=0,0",                   /* Disable hardware flow control. */
         "AT+CMEE=2",                    /* Enable extended error reporting. */
         "AT+CLTS=1",                    /* Sync RTC with network time. */
         "AT&W0",                        /* Save configuration. */
         NULL
     };
-    for (const char **command=init_strings; *command; command++)
+    for (const char *const *command=init_strings; *command; command++)
         at_command_simple(modem->at, "%s", *command);
 
     /* Configure IP application. */
