@@ -34,12 +34,12 @@ struct at_parser {
     size_t buf_current;
 };
 
-static const char *final_ok_responses[] = {
+static const char *const final_ok_responses[] = {
     "OK",
     NULL
 };
 
-static const char *final_responses[] = {
+static const char *const final_responses[] = {
     "OK",
     "ERROR",
     "NO CARRIER",
@@ -48,7 +48,7 @@ static const char *final_responses[] = {
     NULL
 };
 
-static const char *urc_responses[] = {
+static const char *const urc_responses[] = {
     "RING",
     NULL
 };
@@ -98,7 +98,7 @@ void at_parser_await_response(struct at_parser *parser)
     parser->state = (parser->expect_dataprompt ? STATE_DATAPROMPT : STATE_READLINE);
 }
 
-bool at_prefix_in_table(const char *line, const char *table[])
+bool at_prefix_in_table(const char *line, const char *const table[])
 {
     for (int i=0; table[i] != NULL; i++)
         if (!strncmp(line, table[i], strlen(table[i])))
