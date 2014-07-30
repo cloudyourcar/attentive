@@ -95,7 +95,7 @@ static int telit2_pdp_close(struct cellular *modem)
 
 int telit2_op_iccid(struct cellular *modem, char *buf, size_t len)
 {
-    char fmt[16];
+    char fmt[24];
     if (snprintf(fmt, sizeof(fmt), "#CCID: %%[0-9]%ds", (int) len) >= (int) sizeof(fmt)) {
         errno = ENOSPC;
         return -1;
