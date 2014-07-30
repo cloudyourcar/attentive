@@ -14,6 +14,10 @@
 
 #include "common.h"
 
+
+#define TELIT2_FTP_TIMEOUT 60
+
+
 struct cellular_telit2 {
     struct cellular dev;
 };
@@ -200,6 +204,89 @@ int telit2_socket_close(struct cellular *modem, int connid)
     return 0;
 }
 
+static int telit2_ftp_open(struct cellular *modem, const char *host, uint16_t port, const char *username, const char *password, bool passive)
+{
+    cellular_command_simple_pdp(modem, "AT#FTPOPEN=%s:%d,%s,%s,%d", host, port, username, password, passive);
+
+    return 0;
+}
+
+static int telit2_ftp_get(struct cellular *modem, const char *filename)
+{
+    at_set_timeout(modem->at, 90);
+    at_command_simple(modem->at, "AT#FTPGETPKT=\"%s\",0", filename);
+
+    return 0;
+}
+
+static enum at_response_type scanner_ftprecv(const char *line, size_t len, void *arg)
+{
+    (void) len;
+    (void) arg;
+
+    int bytes;
+    if (sscanf(line, "#FTPRECV: %d", &bytes) == 1)
+        return AT_RESPONSE_RAWDATA_FOLLOWS(bytes);
+    return AT_RESPONSE_UNKNOWN;
+}
+
+static int telit2_ftp_getdata(struct cellular *modem, char *buffer, size_t length)
+{
+    /* FIXME: This function's flow is really ugly. */
+retry:
+    at_set_timeout(modem->at, 150);
+    at_set_command_scanner(modem->at, scanner_ftprecv);
+    const char *response = at_command(modem->at, "AT#FTPRECV=%zu", length);
+
+    if (response == NULL)
+        return -1;
+
+    int bytes;
+    int retries = 0;
+    if (sscanf(response, "#FTPRECV: %d", &bytes) == 1) {
+        /* Zero means no data is available. Wait for it. */
+        if (bytes == 0) {
+            /* Bail out on timeout. */
+            if (++retries >= TELIT2_FTP_TIMEOUT) {
+                errno = ETIMEDOUT;
+                return -1;
+            }
+            sleep(1);
+            goto retry;
+        }
+
+        /* Locate the payload. */
+        const char *data = strchr(response, '\n');
+        if (data == NULL) {
+            errno = EPROTO;
+            return -1;
+        }
+        data += 1;
+
+        /* Copy payload to result buffer. */
+        memcpy(buffer, data, bytes);
+        return bytes;
+    }
+
+    /* Error or EOF? */
+    int eof;
+    response = at_command(modem->at, "AT#FTPGETPKT?");
+    at_simple_scanf(response, "#FTPGETPKT: %*[^,],%*d,%d", &eof);
+    if (eof == 1)
+        return 0;
+
+    /* Some other error. */
+    errno = EPROTO;
+    return -1;
+}
+
+static int telit2_ftp_close(struct cellular *modem)
+{
+    at_set_timeout(modem->at, 90);
+    at_command_simple(modem->at, "AT#FTPCLOSE");
+
+    return 0;
+}
 
 static const struct cellular_ops telit2_ops = {
     .attach = telit2_attach,
@@ -218,6 +305,10 @@ static const struct cellular_ops telit2_ops = {
     .socket_send = telit2_socket_send,
     .socket_recv = telit2_socket_recv,
     .socket_close = telit2_socket_close,
+    .ftp_open = telit2_ftp_open,
+    .ftp_get = telit2_ftp_get,
+    .ftp_getdata = telit2_ftp_getdata,
+    .ftp_close = telit2_ftp_close,
 };
 
 struct cellular *cellular_telit2_alloc(void)
