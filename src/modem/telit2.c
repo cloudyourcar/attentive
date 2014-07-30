@@ -112,6 +112,7 @@ int telit2_op_iccid(struct cellular *modem, char *buf, size_t len)
 static int telit2_socket_connect(struct cellular *modem, int connid, const char *host, uint16_t port)
 {
     /* Reset socket configuration to default. */
+    at_set_timeout(modem->at, 5);
     at_command_simple(modem->at, "AT#SCFGEXT=%d,0,0,0,0,0", connid);
     at_command_simple(modem->at, "AT#SCFGEXT2=%d,0,0,0,0,0", connid);
 
