@@ -74,6 +74,9 @@ static int telit2_detach(struct cellular *modem)
 
 static int telit2_pdp_open(struct cellular *modem, const char *apn)
 {
+    at_set_timeout(modem->at, 5);
+    at_command_simple(modem->at, "AT+CGDCONT=1,IP,\"%s\"", apn);
+
     at_set_timeout(modem->at, 150);
     const char *response = at_command(modem->at, "AT#SGACT=1,1");
 
