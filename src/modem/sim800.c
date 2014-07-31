@@ -29,6 +29,8 @@
  * We work it all around, but it makes the code unnecessarily complex.
  */
 
+#define SIM800_FTP_TIMEOUT 60
+
 enum sim800_socket_status {
     SIM800_SOCKET_STATUS_ERROR = -1,
     SIM800_SOCKET_STATUS_UNKNOWN = 0,
@@ -482,6 +484,10 @@ static enum at_response_type scanner_ftpget2(const char *line, size_t len, void 
 
 static int sim800_ftp_getdata(struct cellular *modem, char *buffer, size_t length)
 {
+    struct cellular_sim800 *priv = (struct cellular_sim800 *) modem;
+
+    int retries = 0;
+retry:
     at_set_timeout(modem->at, 150);
     at_set_command_scanner(modem->at, scanner_ftpget2);
     const char *response = at_command(modem->at, "AT+FTPGET=2,%zu", length);
@@ -491,10 +497,16 @@ static int sim800_ftp_getdata(struct cellular *modem, char *buffer, size_t lengt
 
     int cnflength;
     if (sscanf(response, "+FTPGET: 2,%d", &cnflength) == 1) {
-        /* Bail out of there's no data. */
-        /* FIXME: We should probably block here. */
-        if (cnflength == 0)
-            return 0;
+        /* Zero means no data is available. Wait for it. */
+        if (cnflength == 0) {
+            /* Bail out on timeout. */
+            if (++retries >= SIM800_FTP_TIMEOUT) {
+                errno = ETIMEDOUT;
+                return -1;
+            }
+            sleep(1);
+            goto retry;
+        }
 
         /* Locate the payload. */
         const char *data = strchr(response, '\n');
