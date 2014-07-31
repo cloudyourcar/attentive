@@ -29,6 +29,7 @@
  * We work it all around, but it makes the code unnecessarily complex.
  */
 
+#define SIM800_WAITACK_TIMEOUT 60
 #define SIM800_FTP_TIMEOUT 60
 
 enum sim800_socket_status {
@@ -406,6 +407,28 @@ static ssize_t sim800_socket_recv(struct cellular *modem, int connid, void *buff
     return cnt;
 }
 
+static int sim800_socket_waitack(struct cellular *modem, int connid)
+{
+    const char *response;
+
+    at_set_timeout(modem->at, 5);
+    for (int i=0; i<SIM800_WAITACK_TIMEOUT; i++) {
+        /* Read number of bytes waiting. */
+        int nacklen;
+        response = at_command(modem->at, "AT+CIPACK=%d", connid);
+        at_simple_scanf(response, "+CIPACK: %*d,%*d,%d", &nacklen);
+
+        /* Return if all bytes were acknowledged. */
+        if (nacklen == 0)
+            return 0;
+
+        sleep(1);
+    }
+
+    errno = ETIMEDOUT;
+    return -1;
+}
+
 static enum at_response_type scanner_cipclose(const char *line, size_t len, void *arg)
 {
     (void) len;
@@ -561,6 +584,7 @@ static const struct cellular_ops sim800_ops = {
     .socket_connect = sim800_socket_connect,
     .socket_send = sim800_socket_send,
     .socket_recv = sim800_socket_recv,
+    .socket_waitack = sim800_socket_waitack,
     .socket_close = sim800_socket_close,
     .ftp_open = sim800_ftp_open,
     .ftp_get = sim800_ftp_get,
