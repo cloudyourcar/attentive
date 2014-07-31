@@ -236,6 +236,7 @@ static enum at_response_type scanner_ftprecv(const char *line, size_t len, void 
 static int telit2_ftp_getdata(struct cellular *modem, char *buffer, size_t length)
 {
     /* FIXME: This function's flow is really ugly. */
+    int retries = 0;
 retry:
     at_set_timeout(modem->at, 150);
     at_set_command_scanner(modem->at, scanner_ftprecv);
@@ -245,7 +246,6 @@ retry:
         return -1;
 
     int bytes;
-    int retries = 0;
     if (sscanf(response, "#FTPRECV: %d", &bytes) == 1) {
         /* Zero means no data is available. Wait for it. */
         if (bytes == 0) {
