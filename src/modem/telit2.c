@@ -271,12 +271,29 @@ retry:
     /* Error or EOF? */
     int eof;
     response = at_command(modem->at, "AT#FTPGETPKT?");
+    /* Expected response: #FTPGETPKT: <remotefile>,<viewMode>,<eof> */
+#if 0
+    /* The %[] specifier is not supported on some embedded systems. */
     at_simple_scanf(response, "#FTPGETPKT: %*[^,],%*d,%d", &eof);
+#else
+    /* Parse manually. */
+    if (response == NULL)
+        return -1;
+    errno = EPROTO;
+    /* Check the initial part of the response. */
+    if (strncmp(response, "#FTPGETPKT: ", 12))
+        return -1;
+    /* Skip the filename. */
+    response = strchr(response, ',');
+    if (response == NULL)
+        return -1;
+    response++;
+    at_simple_scanf(response, "%*d,%d", &eof);
+#endif
+
     if (eof == 1)
         return 0;
 
-    /* Some other error. */
-    errno = EPROTO;
     return -1;
 }
 
