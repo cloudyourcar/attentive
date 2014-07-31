@@ -519,6 +519,9 @@ retry:
         /* Copy payload to result buffer. */
         memcpy((char *)buffer, data, cnflength);
         return cnflength;
+    } else if (priv->ftpget1_status == 0) {
+        /* Transfer finished. */
+        return 0;
     } else {
         errno = EPROTO;
         return -1;
