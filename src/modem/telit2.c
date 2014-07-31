@@ -15,6 +15,7 @@
 #include "common.h"
 
 
+#define TELIT2_WAITACK_TIMEOUT 60
 #define TELIT2_FTP_TIMEOUT 60
 
 
@@ -238,7 +239,38 @@ static ssize_t telit2_socket_recv(struct cellular *modem, int connid, void *buff
     return cnt;
 }
 
-int telit2_socket_close(struct cellular *modem, int connid)
+static int telit2_socket_waitack(struct cellular *modem, int connid)
+{
+    const char *response;
+
+    at_set_timeout(modem->at, 5);
+    for (int i=0; i<TELIT2_WAITACK_TIMEOUT; i++) {
+        /* Read number of bytes waiting. */
+        int ack_waiting;
+        response = at_command(modem->at, "AT#SI=%d", connid);
+        at_simple_scanf(response, "#SI: %*d,%*d,%*d,%*d,%d", &ack_waiting);
+
+        /* ack_waiting is meaningless if socket is not connected. Check this. */
+        int socket_status;
+        response = at_command(modem->at, "AT#SS=%d", connid);
+        at_simple_scanf(response, "#SS: %*d,%d", &socket_status);
+        if (socket_status == 0) {
+            errno = ECONNRESET;
+            return -1;
+        }
+
+        /* Return if all bytes were acknowledged. */
+        if (ack_waiting == 0)
+            return 0;
+
+        sleep(1);
+    }
+
+    errno = ETIMEDOUT;
+    return -1;
+}
+
+static int telit2_socket_close(struct cellular *modem, int connid)
 {
     at_set_timeout(modem->at, 150);
     at_command_simple(modem->at, "AT#SH=%d", connid);
@@ -363,6 +395,7 @@ static const struct cellular_ops telit2_ops = {
     .socket_connect = telit2_socket_connect,
     .socket_send = telit2_socket_send,
     .socket_recv = telit2_socket_recv,
+    .socket_waitack = telit2_socket_waitack,
     .socket_close = telit2_socket_close,
     .ftp_open = telit2_ftp_open,
     .ftp_get = telit2_ftp_get,
