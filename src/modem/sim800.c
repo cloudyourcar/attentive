@@ -52,6 +52,11 @@ static const char *const sim800_urc_responses[] = {
     "+CTZV: ",          /* AT+CLTS timezone */
     "DST: ",            /* AT+CLTS dst information */
     "+CIEV: ",          /* AT+CLTS undocumented indicator */
+    "NORMAL POWER DOWN",
+    "UNDER-VOLTAGE POWER DOWN",
+    "UNDER-VOLTAGE WARNNING",
+    "OVER-VOLTAGE POWER DOWN",
+    "OVER-VOLTAGE WARNNING",
     NULL
 };
 
