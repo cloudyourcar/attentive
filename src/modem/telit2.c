@@ -18,6 +18,10 @@
 #define TELIT2_WAITACK_TIMEOUT 60
 #define TELIT2_FTP_TIMEOUT 60
 
+static const char *const telit2_urc_responses[] = {
+    "SRING: ",
+    NULL
+};
 
 struct cellular_telit2 {
     struct cellular dev;
@@ -30,6 +34,9 @@ static enum at_response_type scan_line(const char *line, size_t len, void *arg)
 
     struct cellular_telit2 *priv = arg;
     (void) priv;
+
+    if (at_prefix_in_table(line, telit2_urc_responses))
+        return AT_RESPONSE_URC;
 
     return AT_RESPONSE_UNKNOWN;
 }
