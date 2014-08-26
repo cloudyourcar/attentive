@@ -295,19 +295,19 @@ const char *at_command(struct at *at, const char *format, ...)
     va_list ap;
     va_start(ap, format);
     char line[AT_COMMAND_LENGTH];
-    int len = vsnprintf(line, sizeof(line)-strlen("\r\n"), format, ap);
+    int len = vsnprintf(line, sizeof(line)-1, format, ap);
     va_end(ap);
 
     /* Bail out if we run out of space. */
-    if (len >= (int)(sizeof(line)-strlen("\r\n"))) {
+    if (len >= (int)(sizeof(line)-1)) {
         errno = ENOMEM;
         return NULL;
     }
 
-    /* Append modem-style newline. */
     printf("> %s\n", line);
-    memcpy(line+len, "\r\n", 2);
-    len += 2;
+
+    /* Append modem-style newline. */
+    line[len++] = '\r';
 
     /* Send the command. */
     return _at_command(priv, line, len);
