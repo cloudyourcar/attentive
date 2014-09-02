@@ -17,14 +17,19 @@
 
 #define TELIT2_WAITACK_TIMEOUT 60
 #define TELIT2_FTP_TIMEOUT 60
+#define TELIT2_LOCATE_TIMEOUT 150
 
 static const char *const telit2_urc_responses[] = {
     "SRING: ",
+    "#AGPSRING: ",
     NULL
 };
 
 struct cellular_telit2 {
     struct cellular dev;
+
+    int locate_status;
+    float latitude, longitude, altitude;
 };
 
 static enum at_response_type scan_line(const char *line, size_t len, void *arg)
@@ -44,6 +49,13 @@ static enum at_response_type scan_line(const char *line, size_t len, void *arg)
 static void handle_urc(const char *line, size_t len, void *arg)
 {
     struct cellular_telit2 *priv = arg;
+
+    int status;
+    if (sscanf(line, "#AGPSRING: %d", &status) == 1) {
+        priv->locate_status = status;
+        sscanf(line, "#AGPSRING: %*d,%f,%f,%f", &priv->latitude, &priv->longitude, &priv->altitude);
+        return;
+    }
 
     printf("[telit2@%p] urc: %.*s\n", priv, (int) len, line);
 }
@@ -378,6 +390,32 @@ retry:
     return -1;
 }
 
+static int telit2_locate(struct cellular *modem, float *latitude, float *longitude, float *altitude)
+{
+    struct cellular_telit2 *priv = (struct cellular_telit2 *) modem;
+
+    priv->locate_status = -1;
+    at_set_timeout(modem->at, 150);
+    cellular_command_simple_pdp(modem, "AT#AGPSSND");
+
+    for (int i=0; i<TELIT2_LOCATE_TIMEOUT; i++) {
+        sleep(1);
+        if (priv->locate_status == 200) {
+            *latitude = priv->latitude;
+            *longitude = priv->longitude;
+            *altitude = priv->altitude;
+            return 0;
+        }
+        if (priv->locate_status != -1) {
+            errno = ECONNABORTED;
+            return -1;
+        }
+    }
+
+    errno = ETIMEDOUT;
+    return -1;
+}
+
 static int telit2_ftp_close(struct cellular *modem)
 {
     at_set_timeout(modem->at, 90);
@@ -408,6 +446,7 @@ static const struct cellular_ops telit2_ops = {
     .ftp_get = telit2_ftp_get,
     .ftp_getdata = telit2_ftp_getdata,
     .ftp_close = telit2_ftp_close,
+    .locate = telit2_locate,
 };
 
 struct cellular *cellular_telit2_alloc(void)
