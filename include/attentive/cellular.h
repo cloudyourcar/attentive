@@ -74,6 +74,8 @@ struct cellular_ops {
     int (*ftp_get)(struct cellular *modem, const char *filename);
     int (*ftp_getdata)(struct cellular *modem, char *buffer, size_t length);
     int (*ftp_close)(struct cellular *modem);
+
+    int (*locate)(struct cellular *modem, float *latitude, float *longitude, float *altitude);
 };
 
 
