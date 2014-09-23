@@ -13,6 +13,10 @@
 
 int cellular_attach(struct cellular *modem, struct at *at, const char *apn)
 {
+    /* Do nothing if we're already attached. */
+    if (modem->at)
+        return 0;
+
     modem->at = at;
     modem->apn = apn;
 
@@ -24,6 +28,10 @@ int cellular_attach(struct cellular *modem, struct at *at, const char *apn)
 
 int cellular_detach(struct cellular *modem)
 {
+    /* Do nothing if we're not attached. */
+    if (!modem->at)
+        return 0;
+
     int result = modem->ops->detach? modem->ops->detach(modem) : 0;
     modem->at = NULL;
     return result;
