@@ -133,6 +133,10 @@ int at_open(struct at *at)
     struct at_unix *priv = (struct at_unix *) at;
 
     pthread_mutex_lock(&priv->mutex);
+    if (priv->open) {
+        pthread_mutex_unlock(&priv->mutex);
+        return 0;
+    }
 
     priv->fd = open(priv->devpath, O_RDWR);
     if (priv->fd == -1) {
@@ -159,6 +163,10 @@ int at_close(struct at *at)
     struct at_unix *priv = (struct at_unix *) at;
 
     pthread_mutex_lock(&priv->mutex);
+    if (!priv->open) {
+        pthread_mutex_unlock(&priv->mutex);
+        return 0;
+    }
 
     /* Mark the port descriptor as invalid. */
     priv->open = false;
