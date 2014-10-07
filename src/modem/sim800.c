@@ -204,6 +204,19 @@ static int sim800_detach(struct cellular *modem)
     return 0;
 }
 
+static int sim800_clock_gettime(struct cellular *modem, struct timespec *ts)
+{
+    /* TODO: See CYC-1255. */
+    errno = ENOSYS;
+    return -1;
+}
+
+static int sim800_clock_settime(struct cellular *modem, const struct timespec *ts)
+{
+    /* TODO: See CYC-1255. */
+    errno = ENOSYS;
+    return -1;
+}
 
 static enum at_response_type scanner_cipstatus(const char *line, size_t len, void *arg)
 {
@@ -597,8 +610,8 @@ static const struct cellular_ops sim800_ops = {
     .iccid = cellular_op_iccid,
     .creg = cellular_op_creg,
     .rssi = cellular_op_rssi,
-    .clock_gettime = cellular_op_clock_gettime,
-    .clock_settime = cellular_op_clock_settime,
+    .clock_gettime = sim800_clock_gettime,
+    .clock_settime = sim800_clock_settime,
     .socket_connect = sim800_socket_connect,
     .socket_send = sim800_socket_send,
     .socket_recv = sim800_socket_recv,
