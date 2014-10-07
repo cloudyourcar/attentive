@@ -180,7 +180,7 @@ static int sim800_attach(struct cellular *modem)
     static const char *const init_strings[] = {
         "AT+IFC=0,0",                   /* Disable hardware flow control. */
         "AT+CMEE=2",                    /* Enable extended error reporting. */
-        "AT+CLTS=1",                    /* Sync RTC with network time. */
+        "AT+CLTS=0",                    /* Don't sync RTC with network time, it's broken. */
         "AT+CIURC=0",                   /* Disable "Call Ready" URC. */
         "AT&W0",                        /* Save configuration. */
         NULL
