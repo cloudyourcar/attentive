@@ -53,6 +53,10 @@ static const char *const sim800_urc_responses[] = {
     "+CTZV: ",          /* AT+CLTS timezone */
     "DST: ",            /* AT+CLTS dst information */
     "+CIEV: ",          /* AT+CLTS undocumented indicator */
+    "RDY",              /* Assorted crap on newer firmware releases. */
+    "+CPIN: READY",
+    "Call Ready",
+    "SMS Ready",
     "NORMAL POWER DOWN",
     "UNDER-VOLTAGE POWER DOWN",
     "UNDER-VOLTAGE WARNNING",
@@ -177,6 +181,7 @@ static int sim800_attach(struct cellular *modem)
         "AT+IFC=0,0",                   /* Disable hardware flow control. */
         "AT+CMEE=2",                    /* Enable extended error reporting. */
         "AT+CLTS=1",                    /* Sync RTC with network time. */
+        "AT+CIURC=0",                   /* Disable "Call Ready" URC. */
         "AT&W0",                        /* Save configuration. */
         NULL
     };
