@@ -29,6 +29,7 @@
  * We work it all around, but it makes the code unnecessarily complex.
  */
 
+#define SIM800_AUTOBAUD_ATTEMPTS 5
 #define SIM800_WAITACK_TIMEOUT 60
 #define SIM800_FTP_TIMEOUT 60
 
@@ -156,8 +157,20 @@ static int sim800_attach(struct cellular *modem)
     at_set_callbacks(modem->at, &sim800_callbacks, (void *) modem);
 
     at_set_timeout(modem->at, 1);
-    at_command(modem->at, "AT");        /* Aid autobauding. Always a good idea. */
-    at_command(modem->at, "ATE0");      /* Disable local echo. */
+
+    /* Perform autobauding. */
+    for (int i=0; i<SIM800_AUTOBAUD_ATTEMPTS; i++) {
+        const char *response = at_command(modem->at, "AT");
+        if (response != NULL)
+            /* Modem replied. Good. */
+            break;
+    }
+
+    /* Disable local echo. */
+    at_command(modem->at, "ATE0");
+
+    /* Disable local echo again; make sure it was disabled successfully. */
+    at_command_simple(modem->at, "ATE0");
 
     /* Initialize modem. */
     static const char *const init_strings[] = {
