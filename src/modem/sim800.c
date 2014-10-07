@@ -589,17 +589,8 @@ retry:
 
 static int sim800_ftp_close(struct cellular *modem)
 {
-    /* Surprise: there is no FTP close command. Close the bearer instead, which
-     * will cause a "net error" immediately.
-     *
-     * NOTE: Performing frequent PDP reconnects is unwelcome under the GSM
-     * etiquette. As long as the bearer opened by AT+CIICR is active, we
-     * shouldn't be causing excessive reconnects; this has been rougly verified
-     * using an operator-side diagnostic tool, but we can't say for sure. If
-     * your device causes a reconnect storm, at best this will cause the BTS to
-     * blacklist you for a while; at worst, you'll get an angry email from your
-     * provider. Please run your own tests if you plan to use FTP a lot. */
-    at_command_simple(modem->at, "AT+SAPBR=0,1");
+    /* Requires fairly recent SIM800 firmware. */
+    at_command_simple(modem->at, "AT+FTPQUIT");
 
     return 0;
 }
