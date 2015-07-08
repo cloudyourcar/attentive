@@ -63,6 +63,8 @@ struct cellular_ops {
     int (*clock_gettime)(struct cellular *modem, struct timespec *ts);
     /** Set RTC date and time. Compatible with clock_settime(). */
     int (*clock_settime)(struct cellular *modem, const struct timespec *ts);
+    /** Get network date and time. */
+    int (*clock_ntptime)(struct cellular *modem, struct timespec *ts);
 
     int (*socket_connect)(struct cellular *modem, int connid, const char *host, uint16_t port);
     ssize_t (*socket_send)(struct cellular *modem, int connid, const void *buffer, size_t amount, int flags);

@@ -224,6 +224,64 @@ static int sim800_clock_settime(struct cellular *modem, const struct timespec *t
     return -1;
 }
 
+static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
+{
+    /* network stuff. */
+    int socket = 1;
+
+    if (modem->ops->socket_connect(modem, socket, "time-nw.nist.gov", 37) == 0) {
+		printf("sim800: connect successful\n");
+	} else {
+		perror("sim800: connect");
+	}
+
+    int len = 0;
+    char buf[32];
+//    char time[4];
+    while ((len = modem->ops->socket_recv(modem, socket, buf, sizeof(buf), 0)) >= 0)
+    {
+        if (len > 0)
+        {
+//        	printf("sim800: received: %s", buf);
+//          printf("Received: >\x1b[0;1;33m%.*x\x1b[0m<\n", len, buf);
+        	printf("Received: >\x1b[1m");
+        	for (int i = 0; i<len; i++)
+			{
+        		printf("%02x", buf[i]);
+			}
+        	printf("\x1b[0m<\n");
+
+        	if (len == 4)
+        	{
+        		ts->tv_sec = 0;
+        		for (int i = 0; i<4; i++)
+        		{
+        			ts->tv_sec = (long int)buf[i] + ts->tv_sec*256;
+//        			time[3-i] = buf[i];
+        		}
+        		printf("sim800: catched UTC timestamp -> %d\n", ts->tv_sec);
+            	ts->tv_sec -= 2208988800L;		//UTC to UNIX time conversion
+            	printf("sim800: final UNIX timestamp -> %d\n", ts->tv_sec);
+            	goto close_conn;
+        	}
+
+        	len = 0;
+        }
+        else
+            sleep(1);
+    }
+
+close_conn:
+    if (modem->ops->socket_close(modem, socket) == 0)
+    {
+        printf("sim800: close successful\n");
+    } else {
+        perror("sim800: close");
+    }
+
+    return 0;
+}
+
 static enum at_response_type scanner_cipstatus(const char *line, size_t len, void *arg)
 {
     (void) len;
@@ -609,6 +667,7 @@ static const struct cellular_ops sim800_ops = {
     .rssi = cellular_op_rssi,
     .clock_gettime = sim800_clock_gettime,
     .clock_settime = sim800_clock_settime,
+    .clock_ntptime = sim800_clock_ntptime,
     .socket_connect = sim800_socket_connect,
     .socket_send = sim800_socket_send,
     .socket_recv = sim800_socket_recv,
