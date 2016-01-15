@@ -30,7 +30,7 @@
  */
 
 #define SIM800_AUTOBAUD_ATTEMPTS 5
-#define SIM800_WAITACK_TIMEOUT 60
+#define SIM800_WAITACK_TIMEOUT 20//60
 #define SIM800_FTP_TIMEOUT 60
 
 enum sim800_socket_status {
@@ -40,7 +40,7 @@ enum sim800_socket_status {
 };
 
 #define SIM800_NSOCKETS                 6
-#define SIM800_CONNECT_TIMEOUT          60
+#define SIM800_CONNECT_TIMEOUT          20//60
 #define SIM800_CIPCFG_RETRIES           10
 
 static const char *const sim800_urc_responses[] = {
@@ -227,7 +227,7 @@ static int sim800_clock_settime(struct cellular *modem, const struct timespec *t
 static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
 {
     /* network stuff. */
-    int socket = 1;
+    int socket = 2;
 
     if (modem->ops->socket_connect(modem, socket, "time-nw.nist.gov", 37) == 0) {
 		printf("sim800: connect successful\n");
@@ -649,7 +649,7 @@ retry:
 static int sim800_ftp_close(struct cellular *modem)
 {
     /* Requires fairly recent SIM800 firmware. */
-    at_command_simple(modem->at, "AT+FTPQUIT");
+//    at_command_simple(modem->at, "AT+FTPQUIT");		this command absent on SIM800 spec
 
     return 0;
 }
