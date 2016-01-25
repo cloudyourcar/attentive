@@ -30,8 +30,9 @@
  */
 
 #define SIM800_AUTOBAUD_ATTEMPTS 5
-#define SIM800_WAITACK_TIMEOUT 20//60
-#define SIM800_FTP_TIMEOUT 60
+#define SIM800_WAITACK_TIMEOUT   20//60
+#define SIM800_FTP_TIMEOUT       60
+#define SET_TIMEOUT              120
 
 enum sim800_socket_status {
     SIM800_SOCKET_STATUS_ERROR = -1,
@@ -238,6 +239,7 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
     int len = 0;
     char buf[32];
 //    char time[4];
+    at_set_timeout(modem->at, 20);
     while ((len = modem->ops->socket_recv(modem, socket, buf, sizeof(buf), 0)) >= 0)
     {
         if (len > 0)
@@ -339,7 +341,7 @@ static enum at_response_type scanner_cifsr(const char *line, size_t len, void *a
 
 static int sim800_pdp_open(struct cellular *modem, const char *apn)
 {
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
 
     /* Configure and open context for FTP/HTTP applications. */
     at_command_simple(modem->at, "AT+SAPBR=3,1,APN,\"%s\"", apn);
@@ -378,7 +380,7 @@ static enum at_response_type scanner_cipshut(const char *line, size_t len, void 
 
 static int sim800_pdp_close(struct cellular *modem)
 {
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
     at_set_command_scanner(modem->at, scanner_cipshut);
     at_command_simple(modem->at, "AT+CIPSHUT");
 
@@ -391,7 +393,7 @@ static int sim800_socket_connect(struct cellular *modem, int connid, const char 
     struct cellular_sim800 *priv = (struct cellular_sim800 *) modem;
 
     /* Send connection request. */
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
     priv->socket_status[connid] = SIM800_SOCKET_STATUS_UNKNOWN;
     cellular_command_simple_pdp(modem, "AT+CIPSTART=%d,TCP,\"%s\",%d", connid, host, port);
 
@@ -435,7 +437,7 @@ static ssize_t sim800_socket_send(struct cellular *modem, int connid, const void
     (void) flags;
 
     /* Request transmission. */
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
     at_expect_dataprompt(modem->at);
     at_command_simple(modem->at, "AT+CIPSEND=%d,%zu", connid, amount);
 
@@ -471,7 +473,7 @@ static ssize_t sim800_socket_recv(struct cellular *modem, int connid, void *buff
             chunk = 128;
 
         /* Perform the read. */
-        at_set_timeout(modem->at, 150);
+        at_set_timeout(modem->at, SET_TIMEOUT);
         at_set_command_scanner(modem->at, scanner_ciprxget);
         const char *response = at_command(modem->at, "AT+CIPRXGET=2,%d,%d", connid, chunk);
         if (response == NULL)
@@ -538,7 +540,7 @@ static enum at_response_type scanner_cipclose(const char *line, size_t len, void
 
 int sim800_socket_close(struct cellular *modem, int connid)
 {
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
     at_set_command_scanner(modem->at, scanner_cipclose);
     at_command_simple(modem->at, "AT+CIPCLOSE=%d", connid);
 
@@ -606,7 +608,7 @@ static int sim800_ftp_getdata(struct cellular *modem, char *buffer, size_t lengt
 
     int retries = 0;
 retry:
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
     at_set_command_scanner(modem->at, scanner_ftpget2);
     const char *response = at_command(modem->at, "AT+FTPGET=2,%zu", length);
 
