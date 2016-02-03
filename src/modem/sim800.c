@@ -32,7 +32,7 @@
 #define SIM800_AUTOBAUD_ATTEMPTS 5
 #define SIM800_WAITACK_TIMEOUT   20//60
 #define SIM800_FTP_TIMEOUT       60
-#define SET_TIMEOUT              120
+#define SET_TIMEOUT              60
 
 enum sim800_socket_status {
     SIM800_SOCKET_STATUS_ERROR = -1,
@@ -272,6 +272,10 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
         else
             sleep(1);
     }
+
+    while (modem->ops->socket_recv(modem, socket, NULL, 1, 0) != 0)
+	{	;	}													//flush
+
 
 close_conn:
     if (modem->ops->socket_close(modem, socket) == 0)
