@@ -34,6 +34,8 @@
 #define SIM800_FTP_TIMEOUT       60
 #define SET_TIMEOUT              30
 
+#define BUF_SIZE                 32
+
 enum sim800_socket_status {
     SIM800_SOCKET_STATUS_ERROR = -1,
     SIM800_SOCKET_STATUS_UNKNOWN = 0,
@@ -233,14 +235,15 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
     if (modem->ops->socket_connect(modem, socket, "time-nw.nist.gov", 37) == 0) {
 		printf("sim800: connect successful\n");
 	} else {
-		perror("sim800: connect");
+		perror("sim800: connect failed");
+		goto close_conn;
 	}
 
     int len = 0;
-    char buf[32];
+    char buf[BUF_SIZE];
 //    char time[4];
     at_set_timeout(modem->at, 20);
-    while ((len = modem->ops->socket_recv(modem, socket, buf, sizeof(buf), 0)) >= 0)
+    while ((len = modem->ops->socket_recv(modem, socket, buf, BUF_SIZE, 0)) >= 0)
     {
         if (len > 0)
         {
@@ -471,7 +474,9 @@ static ssize_t sim800_socket_recv(struct cellular *modem, int connid, void *buff
     (void) flags;
 
     int cnt = 0;
-    while (cnt < (int) length) {
+    // TODO its dumb and exceptions should be handled in other right way
+    char tries = 127;
+    while ( (cnt < (int) length) && tries-- ){
         int chunk = (int) length - cnt;
         /* Limit read size to avoid overflowing AT response buffer. */
         if (chunk > 128)
