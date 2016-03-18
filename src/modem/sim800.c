@@ -30,8 +30,10 @@
  */
 
 #define SIM800_AUTOBAUD_ATTEMPTS 5
-#define SIM800_WAITACK_TIMEOUT 60
-#define SIM800_FTP_TIMEOUT 60
+#define SIM800_WAITACK_TIMEOUT   20
+#define SIM800_FTP_TIMEOUT       60
+#define SET_TIMEOUT              30
+#define BUF_SIZE                 32
 
 enum sim800_socket_status {
     SIM800_SOCKET_STATUS_ERROR = -1,
@@ -40,7 +42,7 @@ enum sim800_socket_status {
 };
 
 #define SIM800_NSOCKETS                 6
-#define SIM800_CONNECT_TIMEOUT          60
+#define SIM800_CONNECT_TIMEOUT          20
 #define SIM800_CIPCFG_RETRIES           10
 
 static const char *const sim800_urc_responses[] = {
@@ -232,7 +234,8 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
     if (modem->ops->socket_connect(modem, socket, "time-nw.nist.gov", 37) == 0) {
         printf("sim800: connect successful\n");
     } else {
-        perror("sim800: connect");
+        perror("sim800: connect failed");
+        goto close_conn;
     }
 
     int len = 0;
@@ -259,7 +262,7 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
                     ts->tv_sec = (long int)buf[i] + ts->tv_sec*256;
 //                  time[3-i] = buf[i];
                 }
-//              printf("sim800: catched UTC timestamp -> %d\n", ts->tv_sec);
+                printf("sim800: catched UTC timestamp -> %d\n", ts->tv_sec);
                 ts->tv_sec -= 2208988800L;		//UTC to UNIX time conversion
                 printf("sim800: final UNIX timestamp -> %d\n", ts->tv_sec);
                 goto close_conn;
@@ -270,6 +273,11 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
         else
             sleep(1);
     }
+
+    // FIXME: It's wrong. It should be removed
+    while (modem->ops->socket_recv(modem, socket, NULL, 1, 0) != 0)
+    {} //flush
+
 
 close_conn:
     if (modem->ops->socket_close(modem, socket) == 0)
@@ -339,7 +347,7 @@ static enum at_response_type scanner_cifsr(const char *line, size_t len, void *a
 
 static int sim800_pdp_open(struct cellular *modem, const char *apn)
 {
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
 
     /* Configure and open context for FTP/HTTP applications. */
     at_command_simple(modem->at, "AT+SAPBR=3,1,APN,\"%s\"", apn);
@@ -378,7 +386,7 @@ static enum at_response_type scanner_cipshut(const char *line, size_t len, void 
 
 static int sim800_pdp_close(struct cellular *modem)
 {
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
     at_set_command_scanner(modem->at, scanner_cipshut);
     at_command_simple(modem->at, "AT+CIPSHUT");
 
@@ -391,7 +399,7 @@ static int sim800_socket_connect(struct cellular *modem, int connid, const char 
     struct cellular_sim800 *priv = (struct cellular_sim800 *) modem;
 
     /* Send connection request. */
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
     priv->socket_status[connid] = SIM800_SOCKET_STATUS_UNKNOWN;
     cellular_command_simple_pdp(modem, "AT+CIPSTART=%d,TCP,\"%s\",%d", connid, host, port);
 
@@ -435,7 +443,7 @@ static ssize_t sim800_socket_send(struct cellular *modem, int connid, const void
     (void) flags;
 
     /* Request transmission. */
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
     at_expect_dataprompt(modem->at);
     at_command_simple(modem->at, "AT+CIPSEND=%d,%zu", connid, amount);
 
@@ -464,14 +472,17 @@ static ssize_t sim800_socket_recv(struct cellular *modem, int connid, void *buff
     (void) flags;
 
     int cnt = 0;
-    while (cnt < (int) length) {
+    // TODO its dumb and exceptions should be handled in other right way
+    // FIXME: It has to be changed. Leave for now
+    char tries = 127;
+    while ( (cnt < (int) length) && tries-- ){
         int chunk = (int) length - cnt;
         /* Limit read size to avoid overflowing AT response buffer. */
         if (chunk > 128)
             chunk = 128;
 
         /* Perform the read. */
-        at_set_timeout(modem->at, 150);
+        at_set_timeout(modem->at, SET_TIMEOUT);
         at_set_command_scanner(modem->at, scanner_ciprxget);
         const char *response = at_command(modem->at, "AT+CIPRXGET=2,%d,%d", connid, chunk);
         if (response == NULL)
@@ -479,6 +490,12 @@ static ssize_t sim800_socket_recv(struct cellular *modem, int connid, void *buff
 
         /* Find the header line. */
         int requested, confirmed;
+        // TODO: 
+        // 1. connid is not checked
+        // 2. there is possible a bug here. if not all data are ready (confirmed < requested)
+        // then wierd things can happen. see memcpy 
+        // requested should be equal to chunk
+        // confirmed is that what can be read
         at_simple_scanf(response, "+CIPRXGET: 2,%*d,%d,%d", &requested, &confirmed);
 
         /* Bail out if we're out of data. */
@@ -487,6 +504,8 @@ static ssize_t sim800_socket_recv(struct cellular *modem, int connid, void *buff
             break;
 
         /* Locate the payload. */
+        /* TODO: what if no \n is in input stream? 
+         * should use strnchr at least */
         const char *data = strchr(response, '\n');
         if (data == NULL) {
             errno = EPROTO;
@@ -538,7 +557,7 @@ static enum at_response_type scanner_cipclose(const char *line, size_t len, void
 
 int sim800_socket_close(struct cellular *modem, int connid)
 {
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
     at_set_command_scanner(modem->at, scanner_cipclose);
     at_command_simple(modem->at, "AT+CIPCLOSE=%d", connid);
 
@@ -606,7 +625,7 @@ static int sim800_ftp_getdata(struct cellular *modem, char *buffer, size_t lengt
 
     int retries = 0;
 retry:
-    at_set_timeout(modem->at, 150);
+    at_set_timeout(modem->at, SET_TIMEOUT);
     at_set_command_scanner(modem->at, scanner_ftpget2);
     const char *response = at_command(modem->at, "AT+FTPGET=2,%zu", length);
 
