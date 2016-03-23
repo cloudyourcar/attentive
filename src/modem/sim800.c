@@ -219,12 +219,11 @@ static enum at_response_type scanner_poweroff(const char *line, size_t len, void
 
 static int sim800_detach(struct cellular *modem)
 {
-    /* AT+CPOWD=1, wait for NORMAL_POWER_DOWN */
-    at_set_timeout(modem->at, 5);
-    at_set_command_scanner(modem->at, scanner_poweroff);
-    const char *response = at_command(modem->at, "AT+CPOWD=1");
+    /* AT+CPOWD=1 */
+    at_set_timeout(modem->at, 1);
+    at_command(modem->at, "AT+CPOWD=1");
     at_set_callbacks(modem->at, NULL, NULL);
-    return response == NULL ? -1 : 0;
+    return 0;
 }
 
 static int sim800_clock_gettime(struct cellular *modem, struct timespec *ts)
