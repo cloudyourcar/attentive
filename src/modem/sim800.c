@@ -206,8 +206,22 @@ static int sim800_attach(struct cellular *modem)
     return 0;
 }
 
+static enum at_response_type scanner_poweroff(const char *line, size_t len, void *arg)
+{
+    (void) len;
+    (void) arg;
+
+    /* AT+CPOWD=1 returns NORMAL_POWER_DOWN response */
+    if (!strcmp(line, "NORMAL_POWER_DOWN"))
+        return AT_RESPONSE_FINAL;
+    return AT_RESPONSE_UNKNOWN;
+}
+
 static int sim800_detach(struct cellular *modem)
 {
+    /* AT+CPOWD=1 */
+    at_set_timeout(modem->at, 1);
+    at_command(modem->at, "AT+CPOWD=1");
     at_set_callbacks(modem->at, NULL, NULL);
     return 0;
 }
