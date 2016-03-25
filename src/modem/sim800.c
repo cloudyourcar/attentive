@@ -241,14 +241,11 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
 
     int len = 0;
     char buf[BUF_SIZE];
-//    char time[4];
     at_set_timeout(modem->at, 20);
     while ((len = modem->ops->socket_recv(modem, socket, buf, BUF_SIZE, 0)) >= 0)
     {
         if (len > 0)
         {
-//        	printf("sim800: received: %s", buf);
-//          printf("Received: >\x1b[0;1;33m%.*x\x1b[0m<\n", len, buf);
         	printf("Received: >\x1b[1m");
         	for (int i = 0; i<len; i++)
 			{
@@ -262,7 +259,6 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
         		for (int i = 0; i<4; i++)
         		{
         			ts->tv_sec = (long int)buf[i] + ts->tv_sec*256;
-//        			time[3-i] = buf[i];
         		}
         		printf("sim800: catched UTC timestamp -> %d\n", ts->tv_sec);
             	ts->tv_sec -= 2208988800L;		//UTC to UNIX time conversion
@@ -276,10 +272,11 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
             sleep(1);
     }
 
+#if 0
     at_set_timeout(modem->at, 20);
     while (modem->ops->socket_recv(modem, socket, NULL, 1, 0) != 0)
 	{	;	}													//flush
-
+#endif
 
 close_conn:
     if (modem->ops->socket_close(modem, socket) == 0)
