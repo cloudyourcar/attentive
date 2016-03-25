@@ -33,7 +33,7 @@
 #define SIM800_WAITACK_TIMEOUT   20
 #define SIM800_FTP_TIMEOUT       60
 #define SET_TIMEOUT              30
-#define BUF_SIZE                 32
+#define NTP_BUF_SIZE             4
 
 enum sim800_socket_status {
     SIM800_SOCKET_STATUS_ERROR = -1,
@@ -131,12 +131,12 @@ static int sim800_config(struct cellular *modem, const char *option, const char 
 {
     at_set_timeout(modem->at, 10);
 
-	for (int i=0; i<attempts; i++) {
+    for (int i=0; i<attempts; i++) {
         /* Blindly try to set the configuration option. */
-		at_command(modem->at, "AT+%s=%s", option, value);
+        at_command(modem->at, "AT+%s=%s", option, value);
 
         /* Query the setting status. */
-		const char *response = at_command(modem->at, "AT+%s?", option);
+        const char *response = at_command(modem->at, "AT+%s?", option);
         /* Bail out on timeouts. */
         if (response == NULL)
             return -1;
@@ -147,11 +147,11 @@ static int sim800_config(struct cellular *modem, const char *option, const char 
             errno = ENOBUFS;
             return -1;
         }
-		if (!strcmp(response, expected))
-			return 0;
+        if (!strcmp(response, expected))
+            return 0;
 
         sleep(1);
-	}
+    }
 
     errno = ETIMEDOUT;
     return -1;
@@ -239,14 +239,11 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
     }
 
     int len = 0;
-    char buf[32];
-//    char time[4];
-    while ((len = modem->ops->socket_recv(modem, socket, buf, sizeof(buf), 0)) >= 0)
+    char buf[NTP_BUF_SIZE];
+    while ((len = modem->ops->socket_recv(modem, socket, buf, NTP_BUF_SIZE, 0)) >= 0)
     {
         if (len > 0)
         {
-//          printf("sim800: received: %s", buf);
-//          printf("Received: >\x1b[0;1;33m%.*x\x1b[0m<\n", len, buf);
             printf("Received: >\x1b[1m");
             for (int i = 0; i<len; i++)
             {
@@ -260,10 +257,9 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
                 for (int i = 0; i<4; i++)
                 {
                     ts->tv_sec = (long int)buf[i] + ts->tv_sec*256;
-//                  time[3-i] = buf[i];
                 }
                 printf("sim800: catched UTC timestamp -> %d\n", ts->tv_sec);
-                ts->tv_sec -= 2208988800L;		//UTC to UNIX time conversion
+                ts->tv_sec -= 2208988800L;        //UTC to UNIX time conversion
                 printf("sim800: final UNIX timestamp -> %d\n", ts->tv_sec);
                 goto close_conn;
             }
@@ -274,10 +270,11 @@ static int sim800_clock_ntptime(struct cellular *modem, struct timespec *ts)
             sleep(1);
     }
 
+#if 0
     // FIXME: It's wrong. It should be removed
     while (modem->ops->socket_recv(modem, socket, NULL, 1, 0) != 0)
     {} //flush
-
+#endif
 
 close_conn:
     if (modem->ops->socket_close(modem, socket) == 0)
