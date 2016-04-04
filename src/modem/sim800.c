@@ -32,7 +32,7 @@
 #define SIM800_AUTOBAUD_ATTEMPTS 5
 #define SIM800_WAITACK_TIMEOUT   20
 #define SIM800_FTP_TIMEOUT       60
-#define SET_TIMEOUT              30
+#define SET_TIMEOUT              60
 #define NTP_BUF_SIZE             4
 
 enum sim800_socket_status {
