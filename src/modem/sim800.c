@@ -164,6 +164,8 @@ static int sim800_attach(struct cellular *modem)
 
     at_set_timeout(modem->at, 1);
 
+    at_set_parity(modem->at, PARITY_ODD);
+
     /* Perform autobauding. */
     for (int i=0; i<SIM800_AUTOBAUD_ATTEMPTS; i++) {
         const char *response = at_command(modem->at, "AT");
@@ -185,13 +187,17 @@ static int sim800_attach(struct cellular *modem)
         "AT+CMEE=2",                    /* Enable extended error reporting. */
         "AT+CLTS=0",                    /* Don't sync RTC with network time, it's broken. */
         "AT+CIURC=0",                   /* Disable "Call Ready" URC. */
+		"AT+ICF=2,0",					/* Enable Parity control (odd)*/
         "AT&W0",                        /* Save configuration. */
         NULL
     };
     for (const char *const *command=init_strings; *command; command++)
         at_command_simple(modem->at, "%s", *command);
 
-    /* Configure IP application. */
+     at_reconf_parity(modem->at);
+
+
+     /* Configure IP application. */
 
     /* Switch to multiple connections mode; it's less buggy. */
     if (sim800_config(modem, "CIPMUX", "1", SIM800_CIPCFG_RETRIES) != 0)

@@ -11,6 +11,12 @@
 
 #include <attentive/parser.h>
 
+
+enum parity_t
+{
+	PARITY_NONE,PARITY_ODD,PARITY_EVEN
+};
+
 /*
  * Publicly accessible fields. Platform-specific implementations may add private
  * fields at the end of this struct.
@@ -59,6 +65,21 @@ int at_close(struct at *at);
  * @param at AT channel instance.
  */
 void at_free(struct at *at);
+
+
+/**
+ * Set AT parity. Parity is set in structure to apply it on physic layer, at_set_parity has to be called.
+ *
+ * @param at AT channel instance.
+ * @param parity Type of parity.
+ */
+void at_set_parity(struct at *at, enum parity_t parity);
+/**
+ * Reconfigure AT channel parity. Parity is determine in at struct
+ *
+ * @param at AT channel instance.
+ */
+int at_reconf_parity(struct at *at);
 
 /**
  * Set AT channel callbacks.

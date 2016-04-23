@@ -27,12 +27,14 @@
 // Remove once you refactor this out.
 #define AT_COMMAND_LENGTH 80
 
+
+
 struct at_unix {
     struct at at;
 
     const char *devpath;    /**< Serial port device path. */
     speed_t baudrate;       /**< Serial port baudate. */
-
+    enum parity_t parity;		/**< Serial port parity. */
     int timeout;            /**< Command timeout in seconds. */
     const char *response;
 
@@ -128,6 +130,29 @@ struct at *at_alloc_unix(const char *devpath, speed_t baudrate)
     return (struct at *) priv;
 }
 
+int at_reconf_parity(struct at *at)
+{
+    struct at_unix *priv = (struct at_unix *) at;
+
+	if (priv->parity != PARITY_NONE)
+	{
+	        struct termios attr;
+	        tcgetattr(priv->fd, &attr);
+	        attr.c_cflag |= PARENB ;		//Enable parity
+
+	        if (priv->parity == PARITY_ODD)
+	        {
+	        	attr.c_cflag |= PARODD ;	//Parity is odd
+	        }
+	        else //PARITY_EVEN
+	        {
+	        	attr.c_cflag &= ~PARODD ;  //Parity is even
+	        }
+
+	        tcsetattr(priv->fd, TCSANOW, &attr);
+	}
+}
+
 int at_open(struct at *at)
 {
     struct at_unix *priv = (struct at_unix *) at;
@@ -147,6 +172,7 @@ int at_open(struct at *at)
     if (priv->baudrate) {
         struct termios attr;
         tcgetattr(priv->fd, &attr);
+        //attr.c_cflag |= PARENB ;
         cfsetspeed(&attr, priv->baudrate);
         tcsetattr(priv->fd, TCSANOW, &attr);
     }
@@ -225,6 +251,13 @@ void at_set_timeout(struct at *at, int timeout)
     struct at_unix *priv = (struct at_unix *) at;
 
     priv->timeout = timeout;
+}
+
+void at_set_parity(struct at *at, enum parity_t parity)
+{
+    struct at_unix *priv = (struct at_unix *) at;
+
+    priv->parity = parity;
 }
 
 void at_expect_dataprompt(struct at *at)
