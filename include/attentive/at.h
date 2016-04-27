@@ -75,6 +75,14 @@ void at_free(struct at *at);
  */
 void at_set_parity(struct at *at, enum parity_t parity);
 /**
+ * Get AT parity. Parity is set in structure to apply it on physic layer, at_set_parity has to be called.
+ *
+ * @param at AT channel instance.
+ * @returns parity .
+ */
+enum parity_t at_get_parity(struct at *at);
+
+/**
  * Reconfigure AT channel parity. Parity is determine in at struct
  *
  * @param at AT channel instance.

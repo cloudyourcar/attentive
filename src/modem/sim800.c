@@ -160,11 +160,10 @@ static int sim800_config(struct cellular *modem, const char *option, const char 
 
 static int sim800_attach(struct cellular *modem)
 {
+	bool parity_reconf = false;
     at_set_callbacks(modem->at, &sim800_callbacks, (void *) modem);
 
     at_set_timeout(modem->at, 1);
-
-    at_set_parity(modem->at, PARITY_ODD);
 
     /* Perform autobauding. */
     for (int i=0; i<SIM800_AUTOBAUD_ATTEMPTS; i++) {
@@ -173,9 +172,19 @@ static int sim800_attach(struct cellular *modem)
             /* Modem replied. Good. */
             break;
     }
+    /* Set parity as odd only in memory, the physical channel is still unchanged*/
+    at_set_parity(modem->at, PARITY_ODD);
 
+    /*Protection against remembering of settings by gsm module*/
     /* Disable local echo. */
-    at_command(modem->at, "ATE0");
+    if(at_command(modem->at, "ATE0") == NULL)
+    {
+    	//If first command failed then set parity in the physical channel
+    	parity_reconf = true;
+    	at_reconf_parity(modem->at);
+    	at_command(modem->at, "ATE0");
+        printf("! EXCEPTION !\nModule: SIM800 \nFunction: sim800_attach \nInfo: Module parity has been set in the past\n");
+    }
 
     /* Disable local echo again; make sure it was disabled successfully. */
     at_command_simple(modem->at, "ATE0");
@@ -187,15 +196,18 @@ static int sim800_attach(struct cellular *modem)
         "AT+CMEE=2",                    /* Enable extended error reporting. */
         "AT+CLTS=0",                    /* Don't sync RTC with network time, it's broken. */
         "AT+CIURC=0",                   /* Disable "Call Ready" URC. */
-		"AT+ICF=2,0",					/* Enable Parity control (odd)*/
         "AT&W0",                        /* Save configuration. */
+		"AT+ICF=2,0",					/* Enable Parity control (odd)*/
         NULL
     };
     for (const char *const *command=init_strings; *command; command++)
         at_command_simple(modem->at, "%s", *command);
 
-     at_reconf_parity(modem->at);
-
+    /* If physical channel has not been set, do it now*/
+    if(parity_reconf == false)
+    {
+    	at_reconf_parity(modem->at);
+   	}
 
      /* Configure IP application. */
 

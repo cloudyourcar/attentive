@@ -119,6 +119,7 @@ struct at *at_alloc_unix(const char *devpath, speed_t baudrate)
     struct sigaction sa = {
         .sa_handler = handle_sigusr1,
     };
+
     sigaction(SIGUSR1, &sa, NULL);
 
     /* initialize and start reader thread */
@@ -258,6 +259,13 @@ void at_set_parity(struct at *at, enum parity_t parity)
     struct at_unix *priv = (struct at_unix *) at;
 
     priv->parity = parity;
+}
+
+enum parity_t at_get_parity(struct at *at)
+{
+    struct at_unix *priv = (struct at_unix *) at;
+
+    return priv->parity ;
 }
 
 void at_expect_dataprompt(struct at *at)
