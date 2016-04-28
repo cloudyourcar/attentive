@@ -86,8 +86,9 @@ enum parity_t at_get_parity(struct at *at);
  * Reconfigure AT channel parity. Parity is determine in at struct
  *
  * @param at AT channel instance.
+ *
  */
-int at_reconf_parity(struct at *at);
+void at_reconf_parity(struct at *at);
 
 /**
  * Set AT channel callbacks.

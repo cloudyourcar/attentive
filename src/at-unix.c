@@ -131,27 +131,33 @@ struct at *at_alloc_unix(const char *devpath, speed_t baudrate)
     return (struct at *) priv;
 }
 
-int at_reconf_parity(struct at *at)
+void at_reconf_parity(struct at *at)
 {
     struct at_unix *priv = (struct at_unix *) at;
+    struct termios attr;
+    tcgetattr(priv->fd, &attr);
 
-	if (priv->parity != PARITY_NONE)
-	{
-	        struct termios attr;
-	        tcgetattr(priv->fd, &attr);
-	        attr.c_cflag |= PARENB ;		//Enable parity
+    switch(priv->parity)
+    {
+        case PARITY_ODD:
+        	attr.c_cflag |= PARENB ;		//Enable parity
+        	attr.c_cflag |= PARODD ;	//Parity is odd
+            break;
 
-	        if (priv->parity == PARITY_ODD)
-	        {
-	        	attr.c_cflag |= PARODD ;	//Parity is odd
-	        }
-	        else //PARITY_EVEN
-	        {
-	        	attr.c_cflag &= ~PARODD ;  //Parity is even
-	        }
+        case PARITY_EVEN:
+        	attr.c_cflag |= PARENB ;		//Enable parity
+        	attr.c_cflag &= ~PARODD ;  //Parity is even
+            break;
 
-	        tcsetattr(priv->fd, TCSANOW, &attr);
-	}
+        case PARITY_NONE:
+        default:
+        	attr.c_cflag &= ~PARENB ;		//Enable parity
+            break;
+
+    }
+
+    tcsetattr(priv->fd, TCSANOW, &attr);
+
 }
 
 int at_open(struct at *at)
