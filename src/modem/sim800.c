@@ -172,9 +172,6 @@ static int sim800_attach(struct cellular *modem)
             break;
     }
 
-    //at_set_parity(modem->at, PARITY_NONE);
-    //at_reconf_parity(modem->at);
-
     /* Disable local echo */
     at_command(modem->at, "ATE0");
     /* Disable local echo again; make sure it was disabled successfully. */

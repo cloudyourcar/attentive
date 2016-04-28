@@ -140,24 +140,22 @@ void at_reconf_parity(struct at *at)
     switch(priv->parity)
     {
         case PARITY_ODD:
-        	attr.c_cflag |= PARENB ;		//Enable parity
-        	attr.c_cflag |= PARODD ;	//Parity is odd
+            attr.c_cflag |= PARENB ;		//Enable parity
+            attr.c_cflag |= PARODD ;	//Parity is odd
             break;
 
         case PARITY_EVEN:
-        	attr.c_cflag |= PARENB ;		//Enable parity
-        	attr.c_cflag &= ~PARODD ;  //Parity is even
+            attr.c_cflag |= PARENB ;		//Enable parity
+            attr.c_cflag &= ~PARODD ;  //Parity is even
             break;
 
         case PARITY_NONE:
         default:
-        	attr.c_cflag &= ~PARENB ;		//Enable parity
+            attr.c_cflag &= ~PARENB ;		//Enable parity
             break;
-
     }
 
     tcsetattr(priv->fd, TCSANOW, &attr);
-
 }
 
 int at_open(struct at *at)
@@ -179,7 +177,6 @@ int at_open(struct at *at)
     if (priv->baudrate) {
         struct termios attr;
         tcgetattr(priv->fd, &attr);
-        //attr.c_cflag |= PARENB ;
         cfsetspeed(&attr, priv->baudrate);
         tcsetattr(priv->fd, TCSANOW, &attr);
     }
