@@ -35,6 +35,7 @@ struct at_unix {
     const char *devpath;    /**< Serial port device path. */
     speed_t baudrate;       /**< Serial port baudate. */
     enum parity_t parity;		/**< Serial port parity. */
+    volatile int errParityCtr;
     int timeout;            /**< Command timeout in seconds. */
     const char *response;
 
@@ -257,6 +258,21 @@ void at_set_timeout(struct at *at, int timeout)
     priv->timeout = timeout;
 }
 
+bool at_handle_transfer_errors(struct at *at)
+{
+    struct at_unix *priv = (struct at_unix *) at;
+    pthread_mutex_lock(&priv->mutex);
+    bool retval = false;
+    if((priv->errParityCtr) > 0 )
+    {
+    	priv->errParityCtr--;
+    	retval = true;
+    }
+    pthread_mutex_unlock(&priv->mutex);
+    return retval;
+}
+
+
 void at_set_parity(struct at *at, enum parity_t parity)
 {
     struct at_unix *priv = (struct at_unix *) at;
@@ -416,8 +432,15 @@ void *at_reader_thread(void *arg)
             pthread_mutex_unlock(&priv->mutex);
         } else if (result == -1) {
             printf("at_reader_thread[%s]: %s\n", priv->devpath, strerror(why));
+
+
             if (why == EINTR)
+            {
+            	//TODO: add error differentiation
+
+            	priv->errParityCtr++;
                 continue;
+            }
             else
                 break;
         } else {
