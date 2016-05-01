@@ -195,7 +195,7 @@ static int sim800_attach(struct cellular *modem)
     switch(at_get_parity(modem->at))
     {
         case PARITY_ODD:
-        	at_command_simple(modem->at, "AT+ICF=2,0");
+            at_command_simple(modem->at, "AT+ICF=2,0");
             at_reconf_parity(modem->at);
         break;
 
