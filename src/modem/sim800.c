@@ -184,17 +184,26 @@ static int sim800_attach(struct cellular *modem)
         "AT+CMEE=2",                    /* Enable extended error reporting. */
         "AT+CLTS=0",                    /* Don't sync RTC with network time, it's broken. */
         "AT+CIURC=0",                   /* Disable "Call Ready" URC. */
-	    "AT+ICF=3,3",					/* Disable Parity control (odd)*/
+        "AT+ICF=3,3",                   /* Disable Parity control (odd)*/
         "AT&W0",                        /* Save configuration. */
-        "AT+ICF=2,0",					/* Enable Parity control (odd)*/
         NULL
     };
     for (const char *const *command=init_strings; *command; command++)
         at_command_simple(modem->at, "%s", *command);
 
     /* Physical channel has to mbe reconfigure the same as gsm module*/
-    at_set_parity(modem->at, PARITY_ODD);
-    at_reconf_parity(modem->at);
+    switch(at_get_parity(modem->at))
+    {
+        case PARITY_ODD:
+        	at_command_simple(modem->at, "AT+ICF=2,0");
+            at_reconf_parity(modem->at);
+        break;
+
+        case PARITY_EVEN:
+            at_command_simple(modem->at, "AT+ICF=2,1");
+            at_reconf_parity(modem->at);
+        break;
+    }
 
      /* Configure IP application. */
 

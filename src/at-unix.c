@@ -430,15 +430,14 @@ void *at_reader_thread(void *arg)
             pthread_mutex_lock(&priv->mutex);
             at_parser_feed(priv->at.parser, &ch, 1);
             pthread_mutex_unlock(&priv->mutex);
-        } else if (result == -1) {
+        }
+        else if (result == -1)
+        {
             printf("at_reader_thread[%s]: %s\n", priv->devpath, strerror(why));
-
-
             if (why == EINTR)
             {
             	//TODO: add error differentiation
-
-            	priv->errParityCtr++;
+                priv->errParityCtr++;
                 continue;
             }
             else

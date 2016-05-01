@@ -14,7 +14,9 @@
 
 enum parity_t
 {
-	PARITY_NONE,PARITY_ODD,PARITY_EVEN
+    PARITY_NONE,
+    PARITY_ODD,
+    PARITY_EVEN
 };
 
 /*
