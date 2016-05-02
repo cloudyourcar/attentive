@@ -436,8 +436,12 @@ void *at_reader_thread(void *arg)
             printf("at_reader_thread[%s]: %s\n", priv->devpath, strerror(why));
             if (why == EINTR)
             {
-            	//TODO: add error differentiation
-                priv->errParityCtr++;
+                //TODO: add error differentiation
+                //Make sure that session is still open
+                if(priv->open == true)
+                {
+            	    priv->errParityCtr++;
+                }
                 continue;
             }
             else
