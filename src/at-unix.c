@@ -27,8 +27,6 @@
 // Remove once you refactor this out.
 #define AT_COMMAND_LENGTH 80
 
-
-
 struct at_unix {
     struct at at;
 
@@ -141,18 +139,24 @@ void at_reconf_parity(struct at *at)
     switch(priv->parity)
     {
         case PARITY_ODD:
+            attr.c_iflag |= PARMRK ;
+            attr.c_iflag |= INPCK ;
             attr.c_cflag |= PARENB ;		//Enable parity
             attr.c_cflag |= PARODD ;	//Parity is odd
+            attr.c_iflag &=~IGNPAR ;
             break;
 
         case PARITY_EVEN:
+            attr.c_iflag |= INPCK ;
             attr.c_cflag |= PARENB ;		//Enable parity
             attr.c_cflag &= ~PARODD ;  //Parity is even
+            attr.c_iflag &=~IGNPAR ;
             break;
 
         case PARITY_NONE:
         default:
             attr.c_cflag &= ~PARENB ;		//Enable parity
+            attr.c_iflag |= IGNPAR ;
             break;
     }
 
@@ -308,6 +312,7 @@ static const char *_at_command(struct at_unix *priv, const void *data, size_t si
 
     /* Send the command. */
     // FIXME: handle interrupts, short writes, errors, etc.
+
     write(priv->fd, data, size);
 
     /* Wait for the parser thread to collect a response. */
@@ -390,6 +395,7 @@ const char *at_command_raw(struct at *at, const void *data, size_t size)
     return _at_command(priv, data, size);
 }
 
+
 void *at_reader_thread(void *arg)
 {
     struct at_unix *priv = (struct at_unix *)arg;
@@ -415,9 +421,9 @@ void *at_reader_thread(void *arg)
 
         /* Attempt to read some data. */
         char ch;
+
         int result = read(priv->fd, &ch, 1);
         int why = errno;
-
         pthread_mutex_lock(&priv->mutex);
         /* Unlock access to the port descriptor. */
         priv->busy = false;
@@ -440,7 +446,7 @@ void *at_reader_thread(void *arg)
                 //Make sure that session is still open
                 if(priv->open == true)
                 {
-            	    priv->errParityCtr++;
+                    priv->errParityCtr++;
                 }
                 continue;
             }
