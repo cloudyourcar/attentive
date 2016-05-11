@@ -191,20 +191,26 @@ static int sim800_attach(struct cellular *modem)
     for (const char *const *command=init_strings; *command; command++)
         at_command_simple(modem->at, "%s", *command);
 
-    /* Physical channel has to mbe reconfigure the same as gsm module*/
+    /* Physical channel has to be reconfigure the same as gsm module*/
+    at_set_parity(modem->at,PARITY_ODD);
     switch(at_get_parity(modem->at))
     {
         case PARITY_ODD:
             at_command_simple(modem->at, "AT+ICF=2,0");
             at_reconf_parity(modem->at);
-        break;
+           break;
 
         case PARITY_EVEN:
             at_command_simple(modem->at, "AT+ICF=2,1");
             at_reconf_parity(modem->at);
-        break;
-    }
+           break;
 
+        default:   // By default device has no parity
+           break;
+    }
+#ifdef PARITY_ERR_SIMULATION
+    parityCheckTest(modem->at);
+#endif
      /* Configure IP application. */
 
     /* Switch to multiple connections mode; it's less buggy. */
@@ -216,6 +222,7 @@ static int sim800_attach(struct cellular *modem)
     /* Enable quick send mode. */
     if (sim800_config(modem, "CIPQSEND", "1", SIM800_CIPCFG_RETRIES) != 0)
         return -1;
+
 
     return 0;
 }
@@ -633,7 +640,6 @@ static enum at_response_type scanner_ftpget2(const char *line, size_t len, void 
 static int sim800_ftp_getdata(struct cellular *modem, char *buffer, size_t length)
 {
     struct cellular_sim800 *priv = (struct cellular_sim800 *) modem;
-
     int retries = 0;
 retry:
     at_set_timeout(modem->at, SET_TIMEOUT);

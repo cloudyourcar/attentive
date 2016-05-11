@@ -11,6 +11,8 @@
 
 #include <attentive/parser.h>
 
+//TODO: Remove all parity simulations marks before merging
+#define PARITY_ERR_SIMULATION
 
 enum parity_t
 {
@@ -155,6 +157,10 @@ const char *at_command(struct at *at, const char *format, ...);
  */
 const char *at_command_raw(struct at *at, const void *data, size_t size);
 
+#ifdef PARITY_ERR_SIMULATION
+void at_sim_err(void);
+void parityCheckTest(struct at *at);
+#endif
 /**
  * Send an AT command and return -1 if it doesn't return OK.
  */

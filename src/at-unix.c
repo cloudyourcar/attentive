@@ -27,6 +27,11 @@
 // Remove once you refactor this out.
 #define AT_COMMAND_LENGTH 80
 
+
+#ifdef PARITY_ERR_SIMULATION
+volatile bool errflag = false;
+#endif
+
 struct at_unix {
     struct at at;
 
@@ -139,24 +144,24 @@ void at_reconf_parity(struct at *at)
     switch(priv->parity)
     {
         case PARITY_ODD:
-            attr.c_iflag |= PARMRK ;
-            attr.c_iflag |= INPCK ;
-            attr.c_cflag |= PARENB ;		//Enable parity
-            attr.c_cflag |= PARODD ;	//Parity is odd
+            //attr.c_iflag |= PARMRK ;
+            //attr.c_iflag |= INPCK ;
+            attr.c_cflag |= PARENB ;	 //Enable parity
+            attr.c_cflag |= PARODD ;     //Parity is odd
             attr.c_iflag &=~IGNPAR ;
             break;
 
         case PARITY_EVEN:
-            attr.c_iflag |= INPCK ;
-            attr.c_cflag |= PARENB ;		//Enable parity
-            attr.c_cflag &= ~PARODD ;  //Parity is even
+            //attr.c_iflag |= INPCK ;
+            attr.c_cflag |= PARENB ;     //Enable parity
+            attr.c_cflag &= ~PARODD ;    //Parity is even
             attr.c_iflag &=~IGNPAR ;
             break;
 
         case PARITY_NONE:
         default:
-            attr.c_cflag &= ~PARENB ;		//Enable parity
-            attr.c_iflag |= IGNPAR ;
+            attr.c_cflag &= ~PARENB ;    //Disable parity
+            attr.c_iflag |= IGNPAR ;     //Ignore parity errore
             break;
     }
 
@@ -178,7 +183,7 @@ int at_open(struct at *at)
         pthread_mutex_unlock(&priv->mutex);
         return -1;
     }
-
+    at_reconf_parity(at);
     if (priv->baudrate) {
         struct termios attr;
         tcgetattr(priv->fd, &attr);
@@ -312,7 +317,26 @@ static const char *_at_command(struct at_unix *priv, const void *data, size_t si
 
     /* Send the command. */
     // FIXME: handle interrupts, short writes, errors, etc.
-
+#ifdef PARITY_ERR_SIMULATION
+    if(errflag)
+    {
+         errflag = false;
+         struct termios attr;
+         int rc = tcgetattr(priv->fd, &attr);
+         int speed = cfgetispeed(&attr);
+         attr.c_cflag |=  CSTOPB;
+         if(speed == 57600)
+         {
+        	 rc = cfsetispeed(&attr,B38400);
+         }
+         else
+         {
+        	 rc = cfsetispeed(&attr,B57600);
+         }
+         int rc2 = tcsetattr(priv->fd, TCSANOW, &attr);
+         printf("speed %i rc %i %i\n", speed,rc,rc2);
+    }
+#endif
     write(priv->fd, data, size);
 
     /* Wait for the parser thread to collect a response. */
@@ -394,7 +418,29 @@ const char *at_command_raw(struct at *at, const void *data, size_t size)
 
     return _at_command(priv, data, size);
 }
+#ifdef PARITY_ERR_SIMULATION
+void at_sim_err(void)
+{
+	errflag = true;
+}
 
+void parityCheckTest(struct at *at)
+{
+	struct at_unix *priv = (struct at_unix *) at;
+	for(int i=0; i<50; i++)
+	{
+		if((i%10)==9)
+		{
+			at_sim_err();
+			printf("makeerrr\n");
+			sleep(1);
+		}
+		const char *response  = at_command(priv, "AT+CGSN");
+
+	}
+
+}
+#endif
 
 void *at_reader_thread(void *arg)
 {
@@ -424,6 +470,11 @@ void *at_reader_thread(void *arg)
 
         int result = read(priv->fd, &ch, 1);
         int why = errno;
+
+        if(handle_globalerrno() != 0)
+        {
+            result = -2;
+        }
         pthread_mutex_lock(&priv->mutex);
         /* Unlock access to the port descriptor. */
         priv->busy = false;
@@ -442,17 +493,31 @@ void *at_reader_thread(void *arg)
             printf("at_reader_thread[%s]: %s\n", priv->devpath, strerror(why));
             if (why == EINTR)
             {
-                //TODO: add error differentiation
-                //Make sure that session is still open
-                if(priv->open == true)
-                {
-                    priv->errParityCtr++;
-                }
                 continue;
             }
             else
                 break;
-        } else {
+        }
+        else if (result == -2)
+        {
+            //Make sure that session is still open
+            if(priv->open == true)
+            {
+               pthread_mutex_lock(&priv->mutex);
+               priv->errParityCtr++;
+#ifdef PARITY_ERR_SIMULATION
+               pthread_mutex_unlock(&priv->mutex);
+               struct termios attr;
+               int rc = tcgetattr(priv->fd, &attr);
+               int speed = cfgetispeed(&attr);
+               rc = cfsetispeed(&attr,57600);
+               attr.c_cflag &=  ~CSTOPB;
+               tcsetattr(priv->fd, TCSANOW, &attr);
+#endif
+               continue;
+            }
+
+        }else {
             printf("at_reader_thread[%s]: received EOF\n", priv->devpath);
             break;
         }
