@@ -505,8 +505,8 @@ void *at_reader_thread(void *arg)
             {
                pthread_mutex_lock(&priv->mutex);
                priv->errParityCtr++;
-#ifdef PARITY_ERR_SIMULATION
                pthread_mutex_unlock(&priv->mutex);
+#ifdef PARITY_ERR_SIMULATION
                struct termios attr;
                int rc = tcgetattr(priv->fd, &attr);
                int speed = cfgetispeed(&attr);

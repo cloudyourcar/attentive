@@ -12,7 +12,7 @@
 #include <attentive/parser.h>
 
 //TODO: Remove all parity simulations marks before merging
-#define PARITY_ERR_SIMULATION
+//#define PARITY_ERR_SIMULATION
 
 enum parity_t
 {
