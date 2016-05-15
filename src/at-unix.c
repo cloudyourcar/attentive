@@ -135,6 +135,69 @@ struct at *at_alloc_unix(const char *devpath, speed_t baudrate)
     return (struct at *) priv;
 }
 
+
+void at_set_parity(struct at *at, enum parity_t Parity)
+{
+    struct at_unix *priv = (struct at_unix *) at;
+    struct termios attr;
+    tcgetattr(priv->fd, &attr);
+
+    switch(Parity)
+    {
+        case PARITY_ODD:
+            //attr.c_iflag |= PARMRK ;
+            //attr.c_iflag |= INPCK ;
+            attr.c_cflag |= PARENB ;	 //Enable parity
+            attr.c_cflag |= PARODD ;     //Parity is odd
+            attr.c_iflag &=~IGNPAR ;
+            break;
+
+        case PARITY_EVEN:
+            //attr.c_iflag |= INPCK ;
+            attr.c_cflag |= PARENB ;     //Enable parity
+            attr.c_cflag &= ~PARODD ;    //Parity is even
+            attr.c_iflag &=~IGNPAR ;
+            break;
+
+        case PARITY_NONE:
+        default:
+            attr.c_cflag &= ~PARODD ;
+            attr.c_cflag &= ~PARENB ;    //Disable parity
+            attr.c_iflag |= IGNPAR ;     //Ignore parity errore
+            break;
+    }
+
+   int  i = tcsetattr(priv->fd, TCSANOW, &attr);
+   printf("GSM Module %i",i);
+}
+
+enum parity_t at_get_parity(struct at *at)
+{
+    struct at_unix *priv = (struct at_unix *) at;
+    struct termios attr;
+    enum parity_t parity;
+
+    tcgetattr(priv->fd, &attr);
+
+    if(attr.c_cflag & PARENB )
+    {
+        if(attr.c_cflag & PARODD )
+        {
+        	parity = PARITY_ODD;
+        }
+        else
+        {
+            parity = PARITY_EVEN;
+        }
+    }
+    else
+    {
+        parity = PARITY_NONE;
+    }
+    return parity;
+}
+
+
 void at_reconf_parity(struct at *at)
 {
     struct at_unix *priv = (struct at_unix *) at;
@@ -171,6 +234,7 @@ void at_reconf_parity(struct at *at)
 int at_open(struct at *at)
 {
     struct at_unix *priv = (struct at_unix *) at;
+    struct termios attr;
 
     pthread_mutex_lock(&priv->mutex);
     if (priv->open) {
@@ -183,7 +247,6 @@ int at_open(struct at *at)
         pthread_mutex_unlock(&priv->mutex);
         return -1;
     }
-    at_reconf_parity(at);
     if (priv->baudrate) {
         struct termios attr;
         tcgetattr(priv->fd, &attr);
@@ -281,7 +344,7 @@ bool at_handle_transfer_errors(struct at *at)
     return retval;
 }
 
-
+/*
 void at_set_parity(struct at *at, enum parity_t parity)
 {
     struct at_unix *priv = (struct at_unix *) at;
@@ -295,7 +358,7 @@ enum parity_t at_get_parity(struct at *at)
 
     return priv->parity ;
 }
-
+*/
 void at_expect_dataprompt(struct at *at)
 {
     at_parser_expect_dataprompt(at->parser);

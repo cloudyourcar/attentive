@@ -160,6 +160,9 @@ static int sim800_config(struct cellular *modem, const char *option, const char 
 
 static int sim800_attach(struct cellular *modem)
 {
+    enum parity_t ConfigPar = at_get_parity(modem->at); // Remember configured parity
+    at_set_parity(modem->at, PARITY_NONE);			    // GSM module by default has parity off
+
     at_set_callbacks(modem->at, &sim800_callbacks, (void *) modem);
 
     at_set_timeout(modem->at, 1);
@@ -192,22 +195,23 @@ static int sim800_attach(struct cellular *modem)
         at_command_simple(modem->at, "%s", *command);
 
     /* Physical channel has to be reconfigure the same as gsm module*/
-    at_set_parity(modem->at,PARITY_ODD);
-    switch(at_get_parity(modem->at))
+    //TODO: replace at_command_simple with normal to not overwrite parity configuration
+    switch(ConfigPar)
     {
         case PARITY_ODD:
             at_command_simple(modem->at, "AT+ICF=2,0");
-            at_reconf_parity(modem->at);
+            //at_reconf_parity(modem->at);
            break;
 
         case PARITY_EVEN:
             at_command_simple(modem->at, "AT+ICF=2,1");
-            at_reconf_parity(modem->at);
+            //at_reconf_parity(modem->at);
            break;
 
         default:   // By default device has no parity
            break;
     }
+    at_set_parity(modem->at, ConfigPar);
 #ifdef PARITY_ERR_SIMULATION
     parityCheckTest(modem->at);
 #endif
