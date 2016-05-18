@@ -12,7 +12,7 @@
 #include <attentive/parser.h>
 
 //TODO: Remove all parity simulations marks before merging
-#define PARITY_ERR_SIMULATION
+//#define PARITY_ERR_SIMULATION
 
 enum parity_t
 {
@@ -72,30 +72,22 @@ void at_free(struct at *at);
 
 
 /**
- * Set AT parity. Parity is set in structure. To apply it on physical layer, at_set_parity has to be called.
+ * Set AT parity. Function used to set parity for at module
  *
  * @param at AT channel instance.
  * @param parity Type of parity.
+ */
+void at_set_parity(struct at *at, enum parity_t Parity);
 
-void at_set_parity(struct at *at, enum parity_t parity); */
 /**
  * Get AT parity.
  *
  * @param at AT channel instance.
  * @returns parity .
-
-enum parity_t at_get_parity(struct at *at); */
-
-/**
- * Configures AT channel parity. Parity is determined in a structure
- *
- * @param at AT channel instance.
- *
  */
-void at_reconf_parity(struct at *at);
-
-void at_set_parity(struct at *at, enum parity_t Parity);
 enum parity_t at_get_parity(struct at *at);
+
+
 /**
  * Handles an errors that occurs during transmission.
  *

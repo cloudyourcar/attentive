@@ -198,38 +198,6 @@ enum parity_t at_get_parity(struct at *at)
 }
 
 
-void at_reconf_parity(struct at *at)
-{
-    struct at_unix *priv = (struct at_unix *) at;
-    struct termios attr;
-    tcgetattr(priv->fd, &attr);
-
-    switch(priv->parity)
-    {
-        case PARITY_ODD:
-            //attr.c_iflag |= PARMRK ;
-            //attr.c_iflag |= INPCK ;
-            attr.c_cflag |= PARENB ;	 //Enable parity
-            attr.c_cflag |= PARODD ;     //Parity is odd
-            attr.c_iflag &=~IGNPAR ;
-            break;
-
-        case PARITY_EVEN:
-            //attr.c_iflag |= INPCK ;
-            attr.c_cflag |= PARENB ;     //Enable parity
-            attr.c_cflag &= ~PARODD ;    //Parity is even
-            attr.c_iflag &=~IGNPAR ;
-            break;
-
-        case PARITY_NONE:
-        default:
-            attr.c_cflag &= ~PARENB ;    //Disable parity
-            attr.c_iflag |= IGNPAR ;     //Ignore parity errore
-            break;
-    }
-
-    tcsetattr(priv->fd, TCSANOW, &attr);
-}
 
 int at_open(struct at *at)
 {
@@ -344,21 +312,6 @@ bool at_handle_transfer_errors(struct at *at)
     return retval;
 }
 
-/*
-void at_set_parity(struct at *at, enum parity_t parity)
-{
-    struct at_unix *priv = (struct at_unix *) at;
-
-    priv->parity = parity;
-}
-
-enum parity_t at_get_parity(struct at *at)
-{
-    struct at_unix *priv = (struct at_unix *) at;
-
-    return priv->parity ;
-}
-*/
 void at_expect_dataprompt(struct at *at)
 {
     at_parser_expect_dataprompt(at->parser);
@@ -390,11 +343,11 @@ static const char *_at_command(struct at_unix *priv, const void *data, size_t si
          attr.c_cflag |=  CSTOPB;
          if(speed == 57600)
          {
-        	 rc = cfsetispeed(&attr,B38400);
+             rc = cfsetispeed(&attr,B38400);
          }
          else
          {
-        	 rc = cfsetispeed(&attr,B57600);
+             rc = cfsetispeed(&attr,B57600);
          }
          int rc2 = tcsetattr(priv->fd, TCSANOW, &attr);
          printf("speed %i rc %i %i\n", speed,rc,rc2);
@@ -494,7 +447,7 @@ void parityCheckTest(struct at *at)
 	{
 		if((i%10)==9)
 		{
-			at_sim_err();
+			//at_sim_err();
 			printf("makeerrr\n");
 			sleep(1);
 		}
