@@ -30,7 +30,7 @@
  */
 
 #define SIM800_AUTOBAUD_ATTEMPTS 5
-#define SIM800_WAITACK_TIMEOUT   20
+#define SIM800_WAITACK_TIMEOUT   40
 #define SIM800_FTP_TIMEOUT       60
 #define SET_TIMEOUT              60
 #define NTP_BUF_SIZE             4
@@ -588,7 +588,7 @@ static int sim800_ftp_get(struct cellular *modem, const char *filename)
     cellular_command_simple_pdp(modem, "AT+FTPGET=1");
 
     /* Wait for the operation result. */
-    for (int i=0; i<SIM800_CONNECT_TIMEOUT; i++) {
+    for (int i=0; i<SIM800_FTP_TIMEOUT; i++) {
         if (priv->ftpget1_status == 1)
             return 0;
 
