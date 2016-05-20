@@ -145,15 +145,16 @@ void at_set_parity(struct at *at, enum parity_t Parity)
     switch(Parity)
     {
         case PARITY_ODD:
-            //attr.c_iflag |= PARMRK ;
-            //attr.c_iflag |= INPCK ;
+            attr.c_iflag |= PARMRK ;
+            attr.c_iflag |= INPCK ;
             attr.c_cflag |= PARENB ;	 //Enable parity
             attr.c_cflag |= PARODD ;     //Parity is odd
             attr.c_iflag &=~IGNPAR ;
             break;
 
         case PARITY_EVEN:
-            //attr.c_iflag |= INPCK ;
+        	attr.c_iflag |= PARMRK ;
+            attr.c_iflag |= INPCK ;
             attr.c_cflag |= PARENB ;     //Enable parity
             attr.c_cflag &= ~PARODD ;    //Parity is even
             attr.c_iflag &=~IGNPAR ;
@@ -161,6 +162,8 @@ void at_set_parity(struct at *at, enum parity_t Parity)
 
         case PARITY_NONE:
         default:
+        	attr.c_iflag &= ~PARMRK ;
+        	attr.c_iflag &= ~INPCK ;
             attr.c_cflag &= ~PARODD ;
             attr.c_cflag &= ~PARENB ;    //Disable parity
             attr.c_iflag |= IGNPAR ;     //Ignore parity errore
@@ -447,7 +450,7 @@ void parityCheckTest(struct at *at)
 	{
 		if((i%10)==9)
 		{
-			//at_sim_err();
+			at_sim_err();
 			printf("makeerrr\n");
 			sleep(1);
 		}
@@ -486,11 +489,6 @@ void *at_reader_thread(void *arg)
 
         int result = read(priv->fd, &ch, 1);
         int why = errno;
-
-        if(handle_globalerrno() != 0)
-        {
-            result = -2;
-        }
         pthread_mutex_lock(&priv->mutex);
         /* Unlock access to the port descriptor. */
         priv->busy = false;
@@ -514,7 +512,7 @@ void *at_reader_thread(void *arg)
             else
                 break;
         }
-        else if (result == -2)
+        else if (result == 3)
         {
             //Make sure that session is still open
             if(priv->open == true)

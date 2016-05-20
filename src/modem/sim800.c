@@ -217,8 +217,6 @@ static int sim800_attach(struct cellular *modem)
             return -1;
         }
     }
-    /* Physical channel has to be reconfigure the same as gsm module*/
-    //TODO: replace at_command_simple with normal to not overwrite parity configuration
     switch(ConfigPar)
     {
         case PARITY_ODD:
