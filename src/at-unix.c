@@ -27,12 +27,18 @@
 // Remove once you refactor this out.
 #define AT_COMMAND_LENGTH 80
 
+
+#ifdef PARITY_ERR_SIMULATION
+volatile bool errflag = false;
+#endif
+
 struct at_unix {
     struct at at;
 
     const char *devpath;    /**< Serial port device path. */
     speed_t baudrate;       /**< Serial port baudate. */
-
+    enum parity_t parity;		/**< Serial port parity. */
+    volatile int errParityCtr;
     int timeout;            /**< Command timeout in seconds. */
     const char *response;
 
@@ -117,6 +123,7 @@ struct at *at_alloc_unix(const char *devpath, speed_t baudrate)
     struct sigaction sa = {
         .sa_handler = handle_sigusr1,
     };
+
     sigaction(SIGUSR1, &sa, NULL);
 
     /* initialize and start reader thread */
@@ -128,9 +135,77 @@ struct at *at_alloc_unix(const char *devpath, speed_t baudrate)
     return (struct at *) priv;
 }
 
+
+void at_set_parity(struct at *at, enum parity_t Parity)
+{
+    struct at_unix *priv = (struct at_unix *) at;
+    struct termios attr;
+    tcgetattr(priv->fd, &attr);
+
+    switch(Parity)
+    {
+        case PARITY_ODD:
+            attr.c_iflag |= PARMRK ;
+            attr.c_iflag |= INPCK ;
+            attr.c_cflag |= PARENB ;	 //Enable parity
+            attr.c_cflag |= PARODD ;     //Parity is odd
+            attr.c_iflag &=~IGNPAR ;
+            break;
+
+        case PARITY_EVEN:
+        	attr.c_iflag |= PARMRK ;
+            attr.c_iflag |= INPCK ;
+            attr.c_cflag |= PARENB ;     //Enable parity
+            attr.c_cflag &= ~PARODD ;    //Parity is even
+            attr.c_iflag &=~IGNPAR ;
+            break;
+
+        case PARITY_NONE:
+        default:
+        	attr.c_iflag &= ~PARMRK ;
+        	attr.c_iflag &= ~INPCK ;
+            attr.c_cflag &= ~PARODD ;
+            attr.c_cflag &= ~PARENB ;    //Disable parity
+            attr.c_iflag |= IGNPAR ;     //Ignore parity errore
+            break;
+    }
+
+   int  i = tcsetattr(priv->fd, TCSANOW, &attr);
+   printf("GSM Module %i",i);
+}
+
+enum parity_t at_get_parity(struct at *at)
+{
+    struct at_unix *priv = (struct at_unix *) at;
+    struct termios attr;
+    enum parity_t parity;
+
+    tcgetattr(priv->fd, &attr);
+
+    if(attr.c_cflag & PARENB )
+    {
+        if(attr.c_cflag & PARODD )
+        {
+        	parity = PARITY_ODD;
+        }
+        else
+        {
+            parity = PARITY_EVEN;
+        }
+    }
+    else
+    {
+        parity = PARITY_NONE;
+    }
+    return parity;
+}
+
+
+
 int at_open(struct at *at)
 {
     struct at_unix *priv = (struct at_unix *) at;
+    struct termios attr;
 
     pthread_mutex_lock(&priv->mutex);
     if (priv->open) {
@@ -143,7 +218,6 @@ int at_open(struct at *at)
         pthread_mutex_unlock(&priv->mutex);
         return -1;
     }
-
     if (priv->baudrate) {
         struct termios attr;
         tcgetattr(priv->fd, &attr);
@@ -227,6 +301,20 @@ void at_set_timeout(struct at *at, int timeout)
     priv->timeout = timeout;
 }
 
+bool at_handle_transfer_errors(struct at *at)
+{
+    struct at_unix *priv = (struct at_unix *) at;
+    pthread_mutex_lock(&priv->mutex);
+    bool retval = false;
+    if((priv->errParityCtr) > 0 )
+    {
+    	priv->errParityCtr--;
+    	retval = true;
+    }
+    pthread_mutex_unlock(&priv->mutex);
+    return retval;
+}
+
 void at_expect_dataprompt(struct at *at)
 {
     at_parser_expect_dataprompt(at->parser);
@@ -248,6 +336,26 @@ static const char *_at_command(struct at_unix *priv, const void *data, size_t si
 
     /* Send the command. */
     // FIXME: handle interrupts, short writes, errors, etc.
+#ifdef PARITY_ERR_SIMULATION
+    if(errflag)
+    {
+         errflag = false;
+         struct termios attr;
+         int rc = tcgetattr(priv->fd, &attr);
+         int speed = cfgetispeed(&attr);
+         attr.c_cflag |=  CSTOPB;
+         if(speed == 57600)
+         {
+             rc = cfsetispeed(&attr,B38400);
+         }
+         else
+         {
+             rc = cfsetispeed(&attr,B57600);
+         }
+         int rc2 = tcsetattr(priv->fd, TCSANOW, &attr);
+         printf("speed %i rc %i %i\n", speed,rc,rc2);
+    }
+#endif
     write(priv->fd, data, size);
 
     /* Wait for the parser thread to collect a response. */
@@ -329,6 +437,27 @@ const char *at_command_raw(struct at *at, const void *data, size_t size)
 
     return _at_command(priv, data, size);
 }
+#ifdef PARITY_ERR_SIMULATION
+void at_sim_err(void)
+{
+	errflag = true;
+}
+
+void parityCheckTest(struct at *at)
+{
+	struct at_unix *priv = (struct at_unix *) at;
+	for(int i=0; i<50; i++)
+	{
+		if((i%10)==9)
+		{
+			at_sim_err();
+			printf("\nSimulate error\n");
+			sleep(1);
+		}
+		const char *response  = at_command(priv, "AT+CGSN");
+	}
+}
+#endif
 
 void *at_reader_thread(void *arg)
 {
@@ -355,9 +484,9 @@ void *at_reader_thread(void *arg)
 
         /* Attempt to read some data. */
         char ch;
+
         int result = read(priv->fd, &ch, 1);
         int why = errno;
-
         pthread_mutex_lock(&priv->mutex);
         /* Unlock access to the port descriptor. */
         priv->busy = false;
@@ -370,13 +499,37 @@ void *at_reader_thread(void *arg)
             pthread_mutex_lock(&priv->mutex);
             at_parser_feed(priv->at.parser, &ch, 1);
             pthread_mutex_unlock(&priv->mutex);
-        } else if (result == -1) {
+        }
+        else if (result == -1)
+        {
             printf("at_reader_thread[%s]: %s\n", priv->devpath, strerror(why));
             if (why == EINTR)
+            {
                 continue;
+            }
             else
                 break;
-        } else {
+        }
+        else if (result == 3)
+        {
+            //Make sure that session is still open
+            if(priv->open == true)
+            {
+               pthread_mutex_lock(&priv->mutex);
+               priv->errParityCtr++;
+               pthread_mutex_unlock(&priv->mutex);
+#ifdef PARITY_ERR_SIMULATION
+               struct termios attr;
+               int rc = tcgetattr(priv->fd, &attr);
+               int speed = cfgetispeed(&attr);
+               rc = cfsetispeed(&attr,57600);
+               attr.c_cflag &=  ~CSTOPB;
+               tcsetattr(priv->fd, TCSANOW, &attr);
+#endif
+               continue;
+            }
+
+        }else {
             printf("at_reader_thread[%s]: received EOF\n", priv->devpath);
             break;
         }

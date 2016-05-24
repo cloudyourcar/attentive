@@ -160,6 +160,9 @@ static int sim800_config(struct cellular *modem, const char *option, const char 
 
 static int sim800_attach(struct cellular *modem)
 {
+    enum parity_t ConfigPar = at_get_parity(modem->at); // Remember configured parity
+    at_set_parity(modem->at, PARITY_NONE);			    // GSM module by default has parity off
+
     at_set_callbacks(modem->at, &sim800_callbacks, (void *) modem);
 
     at_set_timeout(modem->at, 1);
@@ -172,11 +175,21 @@ static int sim800_attach(struct cellular *modem)
             break;
     }
 
-    /* Disable local echo. */
+    /* Disable local echo */
     at_command(modem->at, "ATE0");
-
     /* Disable local echo again; make sure it was disabled successfully. */
-    at_command_simple(modem->at, "ATE0");
+    const char *_response = at_command(modem->at, "ATE0");
+    if (!_response)
+    {
+    	at_set_parity(modem->at, ConfigPar); 		//we need to restore parity before left
+    	return -1; /* timeout */
+    }
+    if (strcmp(_response, ""))
+    {
+    	at_set_parity(modem->at, ConfigPar);		//we need to restore parity before left
+        errno = EINVAL;
+        return -1;
+    }
 
     /* Initialize modem. */
     static const char *const init_strings[] = {
@@ -185,13 +198,42 @@ static int sim800_attach(struct cellular *modem)
         "AT+CMEE=2",                    /* Enable extended error reporting. */
         "AT+CLTS=0",                    /* Don't sync RTC with network time, it's broken. */
         "AT+CIURC=0",                   /* Disable "Call Ready" URC. */
+        "AT+ICF=3,3",                   /* Disable Parity control (odd)*/
         "AT&W0",                        /* Save configuration. */
         NULL
     };
     for (const char *const *command=init_strings; *command; command++)
-        at_command_simple(modem->at, "%s", *command);
+    {
+        const char *_response = at_command(modem->at, "ATE0");
+        if (!_response)
+        {
+        	at_set_parity(modem->at, ConfigPar); 		//we need to restore parity before left
+        	return -1; /* timeout */
+        }
+        if (strcmp(_response, ""))
+        {
+        	at_set_parity(modem->at, ConfigPar);		//we need to restore parity before left
+            errno = EINVAL;
+            return -1;
+        }
+    }
+    switch(ConfigPar)
+    {
+        case PARITY_ODD:
+        	at_command(modem->at, "AT+ICF=2,0");
+           break;
 
-    /* Configure IP application. */
+        case PARITY_EVEN:
+        	at_command(modem->at, "AT+ICF=2,1");
+           break;
+
+        default:   // By default device has no parity
+           break;
+    }
+
+    at_set_parity(modem->at, ConfigPar);
+
+     /* Configure IP application. */
 
     /* Switch to multiple connections mode; it's less buggy. */
     if (sim800_config(modem, "CIPMUX", "1", SIM800_CIPCFG_RETRIES) != 0)
@@ -203,6 +245,9 @@ static int sim800_attach(struct cellular *modem)
     if (sim800_config(modem, "CIPQSEND", "1", SIM800_CIPCFG_RETRIES) != 0)
         return -1;
 
+#ifdef PARITY_ERR_SIMULATION
+    parityCheckTest(modem->at);
+#endif
     return 0;
 }
 
@@ -619,7 +664,6 @@ static enum at_response_type scanner_ftpget2(const char *line, size_t len, void 
 static int sim800_ftp_getdata(struct cellular *modem, char *buffer, size_t length)
 {
     struct cellular_sim800 *priv = (struct cellular_sim800 *) modem;
-
     int retries = 0;
 retry:
     at_set_timeout(modem->at, SET_TIMEOUT);
@@ -669,6 +713,7 @@ static int sim800_ftp_close(struct cellular *modem)
 
     return 0;
 }
+
 
 static const struct cellular_ops sim800_ops = {
     .attach = sim800_attach,

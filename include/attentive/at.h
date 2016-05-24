@@ -11,6 +11,18 @@
 
 #include <attentive/parser.h>
 
+//TODO: Remove all parity simulations marks before merging
+//#define PARITY_ERR_SIMULATION
+
+
+
+enum parity_t
+{
+    PARITY_NONE,
+    PARITY_ODD,
+    PARITY_EVEN
+};
+
 /*
  * Publicly accessible fields. Platform-specific implementations may add private
  * fields at the end of this struct.
@@ -60,6 +72,31 @@ int at_close(struct at *at);
  */
 void at_free(struct at *at);
 
+
+/**
+ * Set AT parity. Function used to set parity for at module
+ *
+ * @param at AT channel instance.
+ * @param parity Type of parity.
+ */
+void at_set_parity(struct at *at, enum parity_t Parity);
+
+/**
+ * Get AT parity.
+ *
+ * @param at AT channel instance.
+ * @returns parity .
+ */
+enum parity_t at_get_parity(struct at *at);
+
+
+/**
+ * Handles an errors that occurs during transmission.
+ *
+ * @param at AT channel instance.
+ * @returns true if errors occurred.
+ */
+bool at_handle_transfer_errors(struct at *at);
 /**
  * Set AT channel callbacks.
  *
@@ -116,6 +153,10 @@ const char *at_command(struct at *at, const char *format, ...);
  */
 const char *at_command_raw(struct at *at, const void *data, size_t size);
 
+#ifdef PARITY_ERR_SIMULATION
+void at_sim_err(void);
+void parityCheckTest(struct at *at);
+#endif
 /**
  * Send an AT command and return -1 if it doesn't return OK.
  */
