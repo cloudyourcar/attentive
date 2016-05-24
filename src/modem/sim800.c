@@ -232,9 +232,7 @@ static int sim800_attach(struct cellular *modem)
     }
 
     at_set_parity(modem->at, ConfigPar);
-#ifdef PARITY_ERR_SIMULATION
-    parityCheckTest(modem->at);
-#endif
+
      /* Configure IP application. */
 
     /* Switch to multiple connections mode; it's less buggy. */
@@ -247,7 +245,9 @@ static int sim800_attach(struct cellular *modem)
     if (sim800_config(modem, "CIPQSEND", "1", SIM800_CIPCFG_RETRIES) != 0)
         return -1;
 
-
+#ifdef PARITY_ERR_SIMULATION
+    parityCheckTest(modem->at);
+#endif
     return 0;
 }
 
@@ -713,6 +713,7 @@ static int sim800_ftp_close(struct cellular *modem)
 
     return 0;
 }
+
 
 static const struct cellular_ops sim800_ops = {
     .attach = sim800_attach,

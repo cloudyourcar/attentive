@@ -451,13 +451,11 @@ void parityCheckTest(struct at *at)
 		if((i%10)==9)
 		{
 			at_sim_err();
-			printf("makeerrr\n");
+			printf("\nSimulate error\n");
 			sleep(1);
 		}
 		const char *response  = at_command(priv, "AT+CGSN");
-
 	}
-
 }
 #endif
 

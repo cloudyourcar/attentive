@@ -14,6 +14,8 @@
 //TODO: Remove all parity simulations marks before merging
 //#define PARITY_ERR_SIMULATION
 
+
+
 enum parity_t
 {
     PARITY_NONE,
